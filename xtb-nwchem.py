@@ -50,8 +50,8 @@ def run_nwchem(chrg,uhf,calcType,xc,bs,cutoff):
         xc1,xc2 = xc[0],xc[1]
         bs1,bs2 = bs[0],bs[1]
     elif calcType == "refine":
-        xc1,xc2 = xc[3],xc[4]
-        bs1,bs2 = bs[3],bs[4]        
+        xc1,xc2 = xc[2],xc[3]
+        bs1,bs2 = bs[2],bs[3]        
     input=open("{}.nw".format(calcName2),"w")
     input.write("""memory heap 200 mb stack 1000 mb global 2800 mb
 start calc
