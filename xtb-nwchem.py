@@ -53,7 +53,13 @@ def run_nwchem(chrg,uhf,calcType,xc,bs,cutoff,**kwargs):
         xc1,xc2 = xc[2],xc[3]
         bs1,bs2 = bs[2],bs[3]     
         atomNo1 = kwargs.get('atom1')
-        atomNo2 = kwards.get('atom2')
+        atomNo2 = kwargs.get('atom2')
+        if calcType == "refine":
+            xyz="../minimum_lowest.xyz"
+            optType=""
+        else:
+            xyz="../TSguess.xyz"
+            optType="saddle"
     input=open("{}.nw".format(calcName2),"w")
     input.write("""memory heap 200 mb stack 1000 mb global 2800 mb
 start calc
@@ -128,34 +134,53 @@ dft
   vectors input atomic output bs2.mos
 end
 """.format(xc2,bs2,xc1,bs1))
-    elif calcType == "refine":
-        #run pes_parse.py on parent directory
-        
+    elif calcType == "refine" or calcType == "autoTS":
         input.write("""dft
     grid fine
     convergence energy 1d-8
 end
 driver #tightopt criteria from Orca
     gmax 0.0001 ; grms 0.00003 ; xrms 0.0006 ; xmax 0.001
-    maxiter 400         
+    maxiter 400  
+    sadstp 0.03
 end
 geometry units angstroms noautosym
-    load ../minimum_lowest.xyz
+    load {0}
 end
 set "ao basis" bs1
+""".format(xyz))
+        if calcType == "autoTS":
+            os.system("mkdir -p opt")
+            input.write("""geometry adjust #fix reaction coordinate (bond)
+  zcoord
+    bond {0} {1} constant
+  end
+end
+task shell "echo @starting constrained opt"
 task dft optimize
+geometry adjust #unfix reaction coordinate
+  zcoord
+    bond {0} {1}
+  end
+end
+driver 
+  xyz opt/optSaddle
+end
+task shell "echo @starting saddle optimization" 
+""".format(atomNo1,atomNo2))        
+        input.write("""task dft optimize {0}
 task shell "echo @starting vibrational calculation"
 task dft freq numerical
 task shell "echo @starting single point calculation"
 set "ao basis" bs2
 dft
-  xc {0}
+  xc {1}
   vectors input atomic output bs2.mos
 end
 task dft energy
-""".format(xc2))    
+""".format(optType,xc2))    
     else:
-        print("NWChem must have a calctype: crude or refine")
+        print("NWChem must have a calctype: crude, refine, or autoTS")
         exit(1)
     
     #submit nwchem job to msub system
@@ -201,122 +226,122 @@ def track_nwchem(calcID):
 
 # readrawdata reads NWChem output containing multiple geometries and returns an array of geometries (xyz, Angstrom), energies (Hartrees), and boolean flag denoting if this geometry marks a geometric minimum
 def getrawdata(infile):
-	f=open(infile,'r')
-	geo=0
-	energies=[]
-	xyzs=[]
-	structure=[]
-	isMin=[]
-	itsOn = 0
-	findEnergy = 0
-	dumpData = 0
-	recordGeo = 0
-	confNum = []
-	confCounter = 1
-	for line in f:
-		if "Step" in line and line.split()[0] == "Step":
-			try: 
-				int(line.split()[1])
-				recordGeo = 1
-			except ValueError:
-				pass
-		if 'Geometry \"' in line and recordGeo == 1:
-			geo = 1
-			recordGeo = 0
-		elif ' ---- ' in line and geo == 1:
-			geo = 0
-			itsOn = 1
-		elif itsOn == 1:
-			#print line
-			data = line.split()
-			if data != []:
-				structure += [[data[1],data[3],data[4],data[5]]]
-				#print structure
-			elif data == []:
-				itsOn = 0
-				findEnergy = 1
-		elif findEnergy == 1 and 'Total DFT' in line:
-			energy = float(line.split()[4])
-			findEnergy = 2
-		elif findEnergy == 2 and 'Optimization converged' in line:
-			isMin += [True]
-			dumpData = 1
-		elif findEnergy == 2 and 'Line search:' in line:
-			isMin += [False]
-			dumpData = 1
-		if dumpData == 1:
-			dumpData = 0
-			xyzs+=[structure]
-			structure=[]
-			energies+=[energy]
-			confNum += [confCounter]
-			if isMin[-1] == True:
-				confCounter += 1
-	#print len(xyzs)
-	#print len(energies)
-	#print energies
-	#print len(isMin)
-	#print isMin
-	return xyzs,energies,isMin,confNum
+    f=open(infile,'r')
+    geo=0
+    energies=[]
+    xyzs=[]
+    structure=[]
+    isMin=[]
+    itsOn = 0
+    findEnergy = 0
+    dumpData = 0
+    recordGeo = 0
+    confNum = []
+    confCounter = 1
+    for line in f:
+        if "Step" in line and line.split()[0] == "Step":
+            try: 
+                int(line.split()[1])
+                recordGeo = 1
+            except ValueError:
+                pass
+        if 'Geometry \"' in line and recordGeo == 1:
+            geo = 1
+            recordGeo = 0
+        elif ' ---- ' in line and geo == 1:
+            geo = 0
+            itsOn = 1
+        elif itsOn == 1:
+            #print line
+            data = line.split()
+            if data != []:
+                structure += [[data[1],data[3],data[4],data[5]]]
+                #print structure
+            elif data == []:
+                itsOn = 0
+                findEnergy = 1
+        elif findEnergy == 1 and 'Total DFT' in line:
+            energy = float(line.split()[4])
+            findEnergy = 2
+        elif findEnergy == 2 and 'Optimization converged' in line:
+            isMin += [True]
+            dumpData = 1
+        elif findEnergy == 2 and 'Line search:' in line:
+            isMin += [False]
+            dumpData = 1
+        if dumpData == 1:
+            dumpData = 0
+            xyzs+=[structure]
+            structure=[]
+            energies+=[energy]
+            confNum += [confCounter]
+            if isMin[-1] == True:
+                confCounter += 1
+    #print len(xyzs)
+    #print len(energies)
+    #print energies
+    #print len(isMin)
+    #print isMin
+    return xyzs,energies,isMin,confNum
 
         
 def pes_parse(infile):
-	xyzs,energies,isMin,confNum=getrawdata(infile)
-	f=open('all.xyz','w')
-	g=open('energies.dat','w')
-	h=open('optHist.dat','w')
-	i=open('minima.xyz','w')
-	j=open('minima_basis2.xyz','w')
-	k=open('minimum_lowest.xyz','w')
-	minIndex = 0
-	hasAltBasis = False # True
-	altBasis = False
-	altBasisOptHist = ""
-	for n in range(len(energies)):
-		if energies[n] < energies[minIndex]:
-			minIndex = n
-	k.write(str(len(xyzs[minIndex])) + "\n Lowest energy conformer: " + str(minIndex) + " \n")
-	for n in range(len(energies)):
-		energykcalmol = str((energies[n]-energies[minIndex])*627.509)
-		if energykcalmol == "0.0":
-			energykcalmol = "0.0000000000"
-		energyString = str(confNum[n]) + ' \t' + energykcalmol +'\t rel kcal/mol \t '+str(energies[n])+' \t Hartrees'
-		g.write(str(n) + "\t" + energyString + "\t" + str(isMin[n]) + "\n")
-		f.write(str(len(xyzs[n])) + "\n" + energyString + "\n")
-		if isMin[n] == True:
-			if altBasis == True:
-				j.write(str(len(xyzs[n])) + "\n" + energyString + "\n")
-			elif altBasis == False:
-				i.write(str(len(xyzs[n])) + "\n" + energyString + "\n")
-		for atom in xyzs[n]:
-			line=" ".join(atom) + "\n"
-			f.write(line)
-			if(isMin[n] == True and altBasis == True):
-				j.write(line)
-			elif isMin[n] == True and altBasis == False:
-				i.write(line)
-			if(n == minIndex):
-				k.write(line)
-		if altBasis == False:
-			h.write(energykcalmol + '\t')
-			if isMin[n] == True:
-				h.write('\n')
-				if hasAltBasis == True:
-					altBasis = True
-		else:
-			altBasisOptHist += (energykcalmol + '\t')
-			if isMin[n] == True:
-				altBasisOptHist += '\n'
-				altBasis = False	
-	h.write("\n\n" + altBasisOptHist)
-	g.close()
-	f.close()
-	h.close()
-	i.close()
-	j.close()
-	k.close()
-	if hasAltBasis == False:
-		os.remove("minima_basis2.xyz")
+    xyzs,energies,isMin,confNum=getrawdata(infile)
+    f=open('all.xyz','w')
+    g=open('energies.dat','w')
+    h=open('optHist.dat','w')
+    i=open('minima.xyz','w')
+    j=open('minima_basis2.xyz','w')
+    k=open('minimum_lowest.xyz','w')
+    minIndex = 0
+    hasAltBasis = False # True
+    altBasis = False
+    altBasisOptHist = ""
+    for n in range(len(energies)):
+        if energies[n] < energies[minIndex]:
+            minIndex = n
+    k.write(str(len(xyzs[minIndex])) + "\n Lowest energy conformer: " + str(minIndex) + " \n")
+    for n in range(len(energies)):
+        energykcalmol = str((energies[n]-energies[minIndex])*627.509)
+        if energykcalmol == "0.0":
+            energykcalmol = "0.0000000000"
+        energyString = str(confNum[n]) + ' \t' + energykcalmol +'\t rel kcal/mol \t '+str(energies[n])+' \t Hartrees'
+        g.write(str(n) + "\t" + energyString + "\t" + str(isMin[n]) + "\n")
+        f.write(str(len(xyzs[n])) + "\n" + energyString + "\n")
+        if isMin[n] == True:
+            if altBasis == True:
+                j.write(str(len(xyzs[n])) + "\n" + energyString + "\n")
+            elif altBasis == False:
+                i.write(str(len(xyzs[n])) + "\n" + energyString + "\n")
+        for atom in xyzs[n]:
+            line=" ".join(atom) + "\n"
+            f.write(line)
+            if(isMin[n] == True and altBasis == True):
+                j.write(line)
+            elif isMin[n] == True and altBasis == False:
+                i.write(line)
+            if(n == minIndex):
+                k.write(line)
+        if altBasis == False:
+            h.write(energykcalmol + '\t')
+            if isMin[n] == True:
+                h.write('\n')
+                if hasAltBasis == True:
+                    altBasis = True
+        else:
+            altBasisOptHist += (energykcalmol + '\t')
+            if isMin[n] == True:
+                altBasisOptHist += '\n'
+                altBasis = False    
+    h.write("\n\n" + altBasisOptHist)
+    g.close()
+    f.close()
+    h.close()
+    i.close()
+    j.close()
+    k.close()
+    if hasAltBasis == False:
+        os.remove("minima_basis2.xyz")
 
 def clean_nwchem():
     os.system("rm -vf *.2ceri* *.b *.b^-1 *.c *.calcID *.cdfit *.db *.drv.hess *.gridpts.* *.p *.zmat submit*.sh*")
@@ -399,78 +424,93 @@ def autoConf(file,chrg,uhf,xc,bs,cutoff):
     goodvibes("nwchem.out")    
 
 def getBondDistance(xyzFile,atomNo1,atomNo2):
-	f=open(xyzFile,"r")
-	f1 = f.readlines()
-	atomCoords=[]
-	for l in f1[2:]:
-		print(l)
-		coordinates = l.split()
-		atomCoords.append([float(coordinates[1]),float(coordinates[2]),float(coordinates[3])])
-	deltaX = atomCoords[atomNo1-1][0] - atomCoords[atomNo2-1][0]
-	deltaY = atomCoords[atomNo1-1][1] - atomCoords[atomNo2-1][1]
-	deltaZ = atomCoords[atomNo1-1][2] - atomCoords[atomNo2-1][2]
-	#print deltaX
+    f=open(xyzFile,"r")
+    f1 = f.readlines()
+    atomCoords=[]
+    for l in f1[2:]:
+        print(l)
+        coordinates = l.split()
+        atomCoords.append([float(coordinates[1]),float(coordinates[2]),float(coordinates[3])])
+    atom1 = ["Atom1"] + atomCoords[atomNo1-1]
+    atom2 = ["Atom2"] + atomCoords[atomNo2-1]
+    return distance(atom1,atom2)             
+    #deltaX = atomCoords[atomNo1-1][0] - atomCoords[atomNo2-1][0]
+    #deltaY = atomCoords[atomNo1-1][1] - atomCoords[atomNo2-1][1]
+    #deltaZ = atomCoords[atomNo1-1][2] - atomCoords[atomNo2-1][2]
+    #print deltaX
+    #return math.pow(math.pow(deltaX,2)+math.pow(deltaY,2)+math.pow(deltaZ,2),0.5)
+
+def distance(atom1, atom2):
+	#atom1 and atom2 are arrays of strings
+	#atomX[0] = chemical symbol
+	#atomX[1] = x coord
+	#atomX[2] = y coord
+	#atomX[3] = z coord
+	deltaX = float(atom1[1]) - float(atom2[1])
+	deltaY = float(atom1[2]) - float(atom2[2])
+	deltaZ = float(atom1[3]) - float(atom2[3])
 	return math.pow(math.pow(deltaX,2)+math.pow(deltaY,2)+math.pow(deltaZ,2),0.5)
 
 def autoTS(file,chrg,uhf,xc,bs,atomNo1,atomNo2,finalScanDistance,direction):
+    import matplotlib.pyplot as plt
     
     #set up XTB scan
     os.system("echo {}: setting up XTB xconstrains file".format(datetime.now()))
     steps=100
     startScanDistance=getBondDistance(file,atomNo1,atomNo2)
-	dir = "scan_" + str(atomNo1) + "_" + str(atomNo2) + "_" + direction
-	os.system("mkdir -p " + dir)
-	os.system("cp " + xyzFile + " " + dir + "/")
-	f=open(dir + "/xcontrol","w+")
-	command = "$constrain \n  force constant = 1 \n  distance: " + str(atomNo1) + "," + str(atomNo2) + "," + str(startScanDistance) + "\n$scan\n  1: " + str(startScanDistance) + "," + str(finalScanDistance) + "," + str(steps) + " \n$end\n"
-	f.write(command)
-	f.close()
-	os.chdir(dir)
+    dir = "scan_" + str(atomNo1) + "_" + str(atomNo2) + "_" + direction
+    os.system("mkdir -p " + dir)
+    os.system("cp " + file + " " + dir + "/")
+    f=open(dir + "/xcontrol","w+")
+    command = "$constrain \n  force constant = 1 \n  distance: " + str(atomNo1) + "," + str(atomNo2) + "," + str(startScanDistance) + "\n$scan\n  1: " + str(startScanDistance) + "," + str(finalScanDistance) + "," + str(steps) + " \n$end\n"
+    f.write(command)
+    f.close()
+    os.chdir(dir)
     os.system("echo {}: running XTB".format(datetime.now()))
-	os.system("xtb " + os.path.basename(xyzFile) + params + "--opt veryfine --input xcontrol | tee opt.out")
-	
+    os.system("xtb " + os.path.basename(file) + params + "--opt veryfine --input xcontrol | tee opt.out")
+    
     #parse XTB scan results
     f=open("xtbscan.log","r")
-	f1=f.readlines()
-	totalAtoms=int(f1[0])
-	print("total atoms = " + str(totalAtoms))
-	energies=[]
-	structures=[]
-	bondLengths=[]
-	energy0 = float(f1[1].split()[1])*627.509
-	for i in range(0,steps):
-		energy = float(f1[i*(totalAtoms+2)+1].split()[1])*627.509
-		energies.append(energy-energy0)
-		print(str(energy-energy0))
-		coords = []
-		for line in f1[i*(totalAtoms+2)+2:(i+1)*(totalAtoms+2)]:
-			coords.append(line.split())
-		structures.append(coords)
-		bondLengths.append(distance(coords[atomNo1-1],coords[atomNo2-1]))
-	f=open("scan.csv","w+")
-	for i in range(0,len(energies)):
-		f.write(str(bondLengths[i]) + "," + str(energies[i]) + "\n")
-	f.close()
-	plt.scatter(bondLengths,energies)
-	plt.xlabel(r"Bond Distance ($\AA$)")
-	plt.ylabel("relative E (kcal/mol)")
-	plt.savefig("scanPES.png")
-	maxEnergy = energies[0]
-	maxStruct = []
-	for i in range(1,len(energies)):
-	    if energies[i] > maxEnergy:
-            Energy = energies[i]
-            uct = structures[i]
-	f=open("TSguess.xyz","w+")
-	f.write(str(totalAtoms) + "\n TS guess, E(xtb) = " + str(maxEnergy) + " \n")
-	for coord in maxStruct:
-	    f.write(" ".join(coord) + "\n")
-	f.close()
-	
+    f1=f.readlines()
+    totalAtoms=int(f1[0])
+    print("total atoms = " + str(totalAtoms))
+    energies=[]
+    structures=[]
+    bondLengths=[]
+    energy0 = float(f1[1].split()[1])*627.509
+    for i in range(0,steps):
+        energy = float(f1[i*(totalAtoms+2)+1].split()[1])*627.509
+        energies.append(energy-energy0)
+        print(str(energy-energy0))
+        coords = []
+        for line in f1[i*(totalAtoms+2)+2:(i+1)*(totalAtoms+2)]:
+            coords.append(line.split())
+        structures.append(coords)
+        bondLengths.append(distance(coords[atomNo1-1],coords[atomNo2-1]))
+    f=open("scan.csv","w+")
+    for i in range(0,len(energies)):
+        f.write(str(bondLengths[i]) + "," + str(energies[i]) + "\n")
+    f.close()
+    plt.scatter(bondLengths,energies)
+    plt.xlabel(r"Bond Distance ($\AA$)")
+    plt.ylabel("relative E (kcal/mol)")
+    plt.savefig("scanPES.png")
+    maxEnergy = energies[0]
+    maxStruct = []
+    for i in range(1,len(energies)):
+        if energies[i] > maxEnergy:
+            maxEnergy = energies[i]
+            maxStruct = structures[i]
+    f=open("TSguess.xyz","w+")
+    f.write(str(totalAtoms) + "\n TS guess, E(xtb) = " + str(maxEnergy) + " \n")
+    for coord in maxStruct:
+        f.write(" ".join(coord) + "\n")
+    f.close()
+    
     #run NWChem constrained optimization, TS opt, frequency calc, and single-point energy evaluation
     os.system("mkdir nwchem")
     os.chdir("nwchem")
-    os.system("echo {}: running NWChem Constrained Opt, then TS opt, and then Freq at {}/{} \nthen Single-Point evaluation at {}/{}".format(datetime.now(),xc[2],func[2],xc[3],func[3]))
+    os.system("echo {}: running NWChem Constrained Opt, then TS opt, and then Freq at {}/{} \nthen Single-Point evaluation at {}/{}".format(datetime.now(),xc[2],bs[2],xc[3],bs[3]))
     calcID_nwchem = run_nwchem(chrg,uhf,"autoTS",xc,bs,cutoff,atom1=atomNo1,atom2=atomNo2)
     os.system("echo {}: tracking NWChem...".format(datetime.now()))
     track_nwchem(calcID_nwchem)
