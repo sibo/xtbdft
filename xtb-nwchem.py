@@ -2,7 +2,7 @@
 #
 #running in headless mode: nohup python3 ~/path/to/this/file/xtb-nwchem.py geom.xyz [-chrg int] [-uhf int] [-xc str,str,str,str] [-bs str,str,str,str] > autoConf.out &
 #
-import os, sys, subprocess, time
+import os, sys, subprocess, time, math
 from datetime import datetime
 goodvibesPy = "~/_programs/goodvibes/goodvibes-3.0.1/goodvibes/GoodVibes.py"
 xtbPath="~/_programs/xtb" # xtb and crest binaries must be located in xtbPath/bin/
@@ -44,14 +44,16 @@ cd {}
     os.system("echo \"calcID is {}\" | tee {}.calcID".format(calcID,calcID))
     return calcID
 
-def run_nwchem(chrg,uhf,calcType,xc,bs,cutoff):
+def run_nwchem(chrg,uhf,calcType,xc,bs,cutoff,**kwargs):
     calcName2 = calcName +"_"+calcType
     if calcType == "crude":
         xc1,xc2 = xc[0],xc[1]
         bs1,bs2 = bs[0],bs[1]
-    elif calcType == "refine":
+    elif calcType == "refine" or calcType=="autoTS":
         xc1,xc2 = xc[2],xc[3]
-        bs1,bs2 = bs[2],bs[3]        
+        bs1,bs2 = bs[2],bs[3]     
+        atomNo1 = kwargs.get('atom1')
+        atomNo2 = kwards.get('atom2')
     input=open("{}.nw".format(calcName2),"w")
     input.write("""memory heap 200 mb stack 1000 mb global 2800 mb
 start calc
@@ -200,7 +202,6 @@ def track_nwchem(calcID):
 # readrawdata reads NWChem output containing multiple geometries and returns an array of geometries (xyz, Angstrom), energies (Hartrees), and boolean flag denoting if this geometry marks a geometric minimum
 def getrawdata(infile):
 	f=open(infile,'r')
-	opt=0
 	geo=0
 	energies=[]
 	xyzs=[]
@@ -320,25 +321,6 @@ def pes_parse(infile):
 def clean_nwchem():
     os.system("rm -vf *.2ceri* *.b *.b^-1 *.c *.calcID *.cdfit *.db *.drv.hess *.gridpts.* *.p *.zmat submit*.sh*")
 
-def autoSearch(f):
-    #confirm existence of file f
-    if(not os.path.isfile(f)):
-        print("The file does not exist: " + f)
-        sys.exit(1)
-    
-    #start CREST conf generation and crude ranking
-    print("* starting CREST/GFN2-XTB conformational search on " + f)
-    run_crest(f)
-    calcMonitor = track_crest(f)
-    if (calcMonitor != 1):
-        print("!!! CREST failed! Printing end of crest.out:")
-        os.system("tail -n 25 " + f)
-        sys.exit(1)
-    print("* finished CREST \n* starting NWChem crude re-optimization of crest conformers")
-    run_nwchem(f)
-    calcMonitor = track_nwchem(f)
-    print("* finished NWChem crude re-optimization")
-
 def goodvibes(file):
     os.system("echo starting goodvibes...")
     os.system("python3 {} --invert -100 {}".format(goodvibesPy,file))
@@ -351,6 +333,7 @@ def parseArgs():
     parser.add_argument("-xc",action="store",dest="xc",default=default_xc,type=str)
     parser.add_argument("-bs",action="store",dest="bs",default=default_bs,type=str)
     parser.add_argument("-cutoff",action="store",dest="cutoff",default=default_cutoff,type=float)
+    parser.add_argument("-mode", actions="store",dest="mode",default="autoConf",type=str,nargs="+")
     parser.add_argument("filename",action="store")
     results=parser.parse_args()
     if (not os.path.isfile(results.filename)):
@@ -364,7 +347,18 @@ def parseArgs():
     if (len(xc) != 4 or len(bs) != 4):
         print ("Error: -bs and -xc must be comma-delimited strings of exactly four items. Omitting them will default to them to: \n-xc b3lyp,,b3lyp,b3lyp \n-bs def2-sv(p),,def2-svp,def2-tzvp")
         sys.exit(1)
-    return results.filename,results.chrg,results.uhf,xc,bs,results.cutoff
+    mode = results.mode[0]
+    if mode == "autoConf":
+        pass
+    elif mode == "autoTS" and results.mode[1].isdigit() and results.mode[2].isdigit():
+        try:
+            float(results.mode[3])
+        except:
+            print("could not convert {} to a float".format(results.mode[3])) 
+    else:
+        print("Error: valid calls are '-mode autoConf' or '-mode autoTS atom1 atom2 finalDistance'")
+        sys.exit(1)
+    return results.filename,results.chrg,results.uhf,xc,bs,results.cutoff,mode,results.mode[1:]
     
 def checkEnv():
     #check that required shell scripts are executable
@@ -373,13 +367,7 @@ def checkEnv():
     #subprocess.check_output(['chmod','+x',realpath+"/pes_parse.py"])
     pass
 
-if __name__ == "__main__":
-    print("Reminder on how to run autoConf.py in headless mode:")
-    print("nohup python3 ~/path/to/this/file/autoConf.py geom.xyz [-chrg int] [-uhf int] > autoConf.out &")
-    pid = print(os.getpid())
-    file,chrg,uhf,xc,bs,cutoff=parseArgs()
-    checkEnv()
-    
+def autoConf(file,chrg,uhf,xc,bs,cutoff):
     #run crest on input .xyz file
     os.system("echo {}: running CREST".format(datetime.now()))
     calcID_crest = run_crest(file,chrg,uhf)
@@ -408,5 +396,101 @@ if __name__ == "__main__":
     
     #optional: script goodvibes correction
     os.system("echo {}: running GoodVibes.py".format(datetime.now()))
-    goodvibes("nwchem.out")
+    goodvibes("nwchem.out")    
+
+def getBondDistance(xyzFile,atomNo1,atomNo2):
+	f=open(xyzFile,"r")
+	f1 = f.readlines()
+	atomCoords=[]
+	for l in f1[2:]:
+		print(l)
+		coordinates = l.split()
+		atomCoords.append([float(coordinates[1]),float(coordinates[2]),float(coordinates[3])])
+	deltaX = atomCoords[atomNo1-1][0] - atomCoords[atomNo2-1][0]
+	deltaY = atomCoords[atomNo1-1][1] - atomCoords[atomNo2-1][1]
+	deltaZ = atomCoords[atomNo1-1][2] - atomCoords[atomNo2-1][2]
+	#print deltaX
+	return math.pow(math.pow(deltaX,2)+math.pow(deltaY,2)+math.pow(deltaZ,2),0.5)
+
+def autoTS(file,chrg,uhf,xc,bs,atomNo1,atomNo2,finalScanDistance,direction):
+    
+    #set up XTB scan
+    os.system("echo {}: setting up XTB xconstrains file".format(datetime.now()))
+    steps=100
+    startScanDistance=getBondDistance(file,atomNo1,atomNo2)
+	dir = "scan_" + str(atomNo1) + "_" + str(atomNo2) + "_" + direction
+	os.system("mkdir -p " + dir)
+	os.system("cp " + xyzFile + " " + dir + "/")
+	f=open(dir + "/xcontrol","w+")
+	command = "$constrain \n  force constant = 1 \n  distance: " + str(atomNo1) + "," + str(atomNo2) + "," + str(startScanDistance) + "\n$scan\n  1: " + str(startScanDistance) + "," + str(finalScanDistance) + "," + str(steps) + " \n$end\n"
+	f.write(command)
+	f.close()
+	os.chdir(dir)
+    os.system("echo {}: running XTB".format(datetime.now()))
+	os.system("xtb " + os.path.basename(xyzFile) + params + "--opt veryfine --input xcontrol | tee opt.out")
+	
+    #parse XTB scan results
+    f=open("xtbscan.log","r")
+	f1=f.readlines()
+	totalAtoms=int(f1[0])
+	print("total atoms = " + str(totalAtoms))
+	energies=[]
+	structures=[]
+	bondLengths=[]
+	energy0 = float(f1[1].split()[1])*627.509
+	for i in range(0,steps):
+		energy = float(f1[i*(totalAtoms+2)+1].split()[1])*627.509
+		energies.append(energy-energy0)
+		print(str(energy-energy0))
+		coords = []
+		for line in f1[i*(totalAtoms+2)+2:(i+1)*(totalAtoms+2)]:
+			coords.append(line.split())
+		structures.append(coords)
+		bondLengths.append(distance(coords[atomNo1-1],coords[atomNo2-1]))
+	f=open("scan.csv","w+")
+	for i in range(0,len(energies)):
+		f.write(str(bondLengths[i]) + "," + str(energies[i]) + "\n")
+	f.close()
+	plt.scatter(bondLengths,energies)
+	plt.xlabel(r"Bond Distance ($\AA$)")
+	plt.ylabel("relative E (kcal/mol)")
+	plt.savefig("scanPES.png")
+	maxEnergy = energies[0]
+	maxStruct = []
+	for i in range(1,len(energies)):
+	    if energies[i] > maxEnergy:
+            Energy = energies[i]
+            uct = structures[i]
+	f=open("TSguess.xyz","w+")
+	f.write(str(totalAtoms) + "\n TS guess, E(xtb) = " + str(maxEnergy) + " \n")
+	for coord in maxStruct:
+	    f.write(" ".join(coord) + "\n")
+	f.close()
+	
+    #run NWChem constrained optimization, TS opt, frequency calc, and single-point energy evaluation
+    os.system("mkdir nwchem")
+    os.chdir("nwchem")
+    os.system("echo {}: running NWChem Constrained Opt, then TS opt, and then Freq at {}/{} \nthen Single-Point evaluation at {}/{}".format(datetime.now(),xc[2],func[2],xc[3],func[3]))
+    calcID_nwchem = run_nwchem(chrg,uhf,"autoTS",xc,bs,cutoff,atom1=atomNo1,atom2=atomNo2)
+    os.system("echo {}: tracking NWChem...".format(datetime.now()))
+    track_nwchem(calcID_nwchem)
+    clean_nwchem()
+    os.system("echo {}: finished NWChem!".format(datetime.now()))
+
+    #optional: script goodvibes correction
+    os.system("echo {}: running GoodVibes.py".format(datetime.now()))
+    goodvibes("nwchem.out")   
+
+
+if __name__ == "__main__":
+    print("Reminder on how to run xtb-nwchem.py in headless mode:")
+    print("nohup python3 ~/path/to/this/file/xtb-nwchem.py geom.xyz [-chrg int] [-uhf int] > yourOutputFile.out &")
+    pid = print(os.getpid())
+    file,chrg,uhf,xc,bs,cutoff,mode,params=parseArgs()
+    checkEnv()
+    if (mode == "autoConf"):
+        autoConf(file,chrg,uhf,xc,bs,cutoff)
+    elif (mode == "autoTS"):
+        autoTS(file,chrg,uhf,xc,bs,params[0],params[1],params[2],"forward")
+    
     
