@@ -95,7 +95,7 @@ set "ao basis" bs1
         readConfs= False
         for line in lines:
             l=line.split()
-            if len(l) < cutoff:
+            if len(l) < 2:
                 continue
             elif l[0] == "number" and l[1] == "of":
                 readConfs=True
@@ -173,7 +173,7 @@ def track_crest(file,calcID):
     #check every 5min if crest.out exists before proceeding
     while True:
         if (os.path.isfile("crest.out")):
-            print(os.getcwd()+"\crest.out exists")
+            print(os.getcwd()+"/crest.out exists")
             break
         time.sleep(5*60)
     #check if crest.out is done
