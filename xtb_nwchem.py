@@ -89,23 +89,7 @@ driver
 end
 set "ao basis" bs1
 """)
-        readCrest = open("../crest.out","r")
-        lines = readCrest.readlines()
-        numConfs=0
-        readConfs= False
-        for line in lines:
-            l=line.split()
-            if len(l) < 2:
-                continue
-            elif l[0] == "number" and l[1] == "of":
-                readConfs=True
-            elif readConfs == True:
-                try:
-                    float(l[1])
-                    if float(l[1]) < cutoff:
-                        numConfs = numConfs + 1
-                except ValueError:
-                    readConfs= False
+	numConfs=readConfs(cutoff)
         os.system("echo There are {} conformers with deltaE_xtb < {} kcal/mol".format(numConfs,cutoff))
         for i in range(1,numConfs+1):
             input.write("""###conf {0}
@@ -168,7 +152,17 @@ echo "{} (nwchem) submitted" """.format(os.getcwd(),NP,calcName2,calcName2))
     calcID = subprocess.check_output(['msub','submit_nwchem_{}.sh'.format(calcName2)]).decode('utf-8').replace("\n","")
     os.system("echo \"calcID is {}\" | tee {}.calcID".format(calcID,calcID))
     return calcID
-    
+
+def readConfs(cutoff):
+	f = open("../crest.energies",'r')
+	lines = f.readlines()
+	numConfs=0
+	for line in lines:
+		l = line.split()
+		if float(l[1]) < cutoff:
+			numConfs = numConfs + 1
+	return numConfs
+
 def track_crest(file,calcID):
     #check every 5min if crest.out exists before proceeding
     while True:
