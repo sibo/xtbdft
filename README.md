@@ -1,2 +1,2 @@
-# xtb-nwchem
-wrapper script for molecular modelling powered by CREST/GFN2-XTB and NWChem (DFT)
+# xtbdft
+wrapper script for multi-level molecular modelling powered by CREST/GFN2-XTB and NWChem (DFT)
