@@ -89,7 +89,7 @@ driver
 end
 set "ao basis" bs1
 """)
-	numConfs=readConfs(cutoff)
+        numConfs=readConfs(cutoff)
         os.system("echo There are {} conformers with deltaE_xtb < {} kcal/mol".format(numConfs,cutoff))
         for i in range(1,numConfs+1):
             input.write("""###conf {0}
