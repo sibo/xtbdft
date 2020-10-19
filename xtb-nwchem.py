@@ -34,7 +34,7 @@ def run_crest(file,chrg,uhf):
     script=open("submit_crest_{}.sh".format(calcName), "w")
     script.write(msubHeader+"""
 export OMP_STACKSIZE=1G
-source {}/Config_xtb_env.bash
+#source {}/share/xtb/config_env.bash
 ulimit -s unlimited
 cd {}
 {}/bin/crest {} --chrg {} --uhf {} -T {} > crest.out""".format(xtbPath,os.getcwd(),xtbPath,file,chrg,uhf,NP))
@@ -53,7 +53,7 @@ def run_nwchem(chrg,uhf,calcType,xc,bs,cutoff,**kwargs):
         xc1,xc2 = xc[2],xc[3]
         bs1,bs2 = bs[2],bs[3]     
         atomNo1 = kwargs.get('atom1')
-        atomNo2 = kwards.get('atom2')
+        atomNo2 = kwargs.get('atom2')
         if calcType == "refine":
             xyz="../minimum_lowest.xyz"
             optType=""
@@ -77,7 +77,6 @@ end
 basis bs1 spherical
   * library {}
 end
-
 basis "cd basis" spherical
   * library "Weigend Coulomb Fitting"
 end
@@ -97,23 +96,7 @@ driver
 end
 set "ao basis" bs1
 """)
-        readCrest = open("../crest.out","r")
-        lines = readCrest.readlines()
-        numConfs=0
-        readConfs= False
-        for line in lines:
-            l=line.split()
-            if len(l) < cutoff:
-                continue
-            elif l[0] == "number" and l[1] == "of":
-                readConfs=True
-            elif readConfs == True:
-                try:
-                    float(l[1])
-                    if float(l[1]) < cutoff:
-                        numConfs = numConfs + 1
-                except ValueError:
-                    readConfs= False
+        numConfs=readConfs(cutoff)
         os.system("echo There are {} conformers with deltaE_xtb < {} kcal/mol".format(numConfs,cutoff))
         for i in range(1,numConfs+1):
             input.write("""###conf {0}
@@ -195,7 +178,17 @@ echo "{} (nwchem) submitted" """.format(os.getcwd(),NP,calcName2,calcName2))
     calcID = subprocess.check_output(['msub','submit_nwchem_{}.sh'.format(calcName2)]).decode('utf-8').replace("\n","")
     os.system("echo \"calcID is {}\" | tee {}.calcID".format(calcID,calcID))
     return calcID
-    
+
+def readConfs(cutoff):
+	f = open("../crest.energies",'r')
+	lines = f.readlines()
+	numConfs=0
+	for line in lines:
+		l = line.split()
+		if float(l[1]) < cutoff:
+			numConfs = numConfs + 1
+	return numConfs
+
 def track_crest(file,calcID):
     #check every 5min if crest.out exists before proceeding
     while True:
@@ -358,7 +351,7 @@ def parseArgs():
     parser.add_argument("-xc",action="store",dest="xc",default=default_xc,type=str)
     parser.add_argument("-bs",action="store",dest="bs",default=default_bs,type=str)
     parser.add_argument("-cutoff",action="store",dest="cutoff",default=default_cutoff,type=float)
-    parser.add_argument("-mode", actions="store",dest="mode",default="autoConf",type=str,nargs="+")
+    parser.add_argument("-mode", action="store",dest="mode",default="autoConf",type=str)
     parser.add_argument("filename",action="store")
     results=parser.parse_args()
     if (not os.path.isfile(results.filename)):
@@ -372,7 +365,7 @@ def parseArgs():
     if (len(xc) != 4 or len(bs) != 4):
         print ("Error: -bs and -xc must be comma-delimited strings of exactly four items. Omitting them will default to them to: \n-xc b3lyp,,b3lyp,b3lyp \n-bs def2-sv(p),,def2-svp,def2-tzvp")
         sys.exit(1)
-    mode = results.mode[0]
+    mode = results.mode
     if mode == "autoConf":
         pass
     elif mode == "autoTS" and results.mode[1].isdigit() and results.mode[2].isdigit():
@@ -441,15 +434,15 @@ def getBondDistance(xyzFile,atomNo1,atomNo2):
     #return math.pow(math.pow(deltaX,2)+math.pow(deltaY,2)+math.pow(deltaZ,2),0.5)
 
 def distance(atom1, atom2):
-	#atom1 and atom2 are arrays of strings
-	#atomX[0] = chemical symbol
-	#atomX[1] = x coord
-	#atomX[2] = y coord
-	#atomX[3] = z coord
-	deltaX = float(atom1[1]) - float(atom2[1])
-	deltaY = float(atom1[2]) - float(atom2[2])
-	deltaZ = float(atom1[3]) - float(atom2[3])
-	return math.pow(math.pow(deltaX,2)+math.pow(deltaY,2)+math.pow(deltaZ,2),0.5)
+    #atom1 and atom2 are arrays of strings
+    #atomX[0] = chemical symbol
+    #atomX[1] = x coord
+    #atomX[2] = y coord
+    #atomX[3] = z coord
+    deltaX = float(atom1[1]) - float(atom2[1])
+    deltaY = float(atom1[2]) - float(atom2[2])
+    deltaZ = float(atom1[3]) - float(atom2[3])
+    return math.pow(math.pow(deltaX,2)+math.pow(deltaY,2)+math.pow(deltaZ,2),0.5)
 
 def autoTS(file,chrg,uhf,xc,bs,atomNo1,atomNo2,finalScanDistance,direction):
     import matplotlib.pyplot as plt
@@ -524,7 +517,7 @@ def autoTS(file,chrg,uhf,xc,bs,atomNo1,atomNo2,finalScanDistance,direction):
 
 if __name__ == "__main__":
     print("Reminder on how to run xtb-nwchem.py in headless mode:")
-    print("nohup python3 ~/path/to/this/file/xtb-nwchem.py geom.xyz [-chrg int] [-uhf int] > yourOutputFile.out &")
+    print("nohup python3 ~/path/to/this/file/xtbdft.py geom.xyz [-chrg int] [-uhf int] > yourOutputFile.out &")
     pid = print(os.getpid())
     file,chrg,uhf,xc,bs,cutoff,mode,params=parseArgs()
     checkEnv()
@@ -532,5 +525,4 @@ if __name__ == "__main__":
         autoConf(file,chrg,uhf,xc,bs,cutoff)
     elif (mode == "autoTS"):
         autoTS(file,chrg,uhf,xc,bs,params[0],params[1],params[2],"forward")
-    
     
