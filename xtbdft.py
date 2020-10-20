@@ -69,7 +69,6 @@ end
 basis bs1 spherical
   * library {}
 end
-
 basis "cd basis" spherical
   * library "Weigend Coulomb Fitting"
 end
