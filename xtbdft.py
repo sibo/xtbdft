@@ -77,7 +77,8 @@ end
     if bs2 != "":
         input.write("""basis bs2 spherical
   * library {}
-end""".format(bs2))
+end
+""".format(bs2))
     if calcType == "crude":
         input.write("""dft
     grid medium
