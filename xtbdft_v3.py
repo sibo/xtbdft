@@ -142,7 +142,7 @@ set "ao basis" bs1
 end
 task shell "echo @starting constrained opt"
 task dft optimize
-geometry adjust #unfix reaction coordinate
+geometry adjust noautoz #unfix reaction coordinate, switch to cartesian opt for saddle pt search
   zcoord
     bond {0} {1}
   end
@@ -450,7 +450,7 @@ def distance(atom1, atom2):
     return math.pow(math.pow(deltaX,2)+math.pow(deltaY,2)+math.pow(deltaZ,2),0.5)
 
 def autoTS(file,chrg,uhf,xc,bs,atomNo1,atomNo2,finalScanDistance,direction):
-    import matplotlib.pyplot as plt
+    #import matplotlib.pyplot as plt
     
     #set up XTB scan
     os.system("echo {0}: setting up XTB xconstrains file".format(datetime.now()))
@@ -484,15 +484,15 @@ def autoTS(file,chrg,uhf,xc,bs,atomNo1,atomNo2,finalScanDistance,direction):
         for line in f1[i*(totalAtoms+2)+2:(i+1)*(totalAtoms+2)]:
             coords.append(line.split())
         structures.append(coords)
-        bondLengths.append(distance(coords[atomNo1-1],coords[atomNo2-1]))
+        bondLengths.append(distance(coords[int(atomNo1)-1],coords[int(atomNo2)-1]))
     f=open("scan.csv","w+")
     for i in range(0,len(energies)):
         f.write(str(bondLengths[i]) + "," + str(energies[i]) + "\n")
     f.close()
-    plt.scatter(bondLengths,energies)
-    plt.xlabel(r"Bond Distance ($\AA$)")
-    plt.ylabel("relative E (kcal/mol)")
-    plt.savefig("scanPES.png")
+    #plt.scatter(bondLengths,energies)
+    #plt.xlabel(r"Bond Distance ($\AA$)")
+    #plt.ylabel("relative E (kcal/mol)")
+    #plt.savefig("scanPES.png")
     maxEnergy = energies[0]
     maxStruct = []
     for i in range(1,len(energies)):
@@ -508,7 +508,7 @@ def autoTS(file,chrg,uhf,xc,bs,atomNo1,atomNo2,finalScanDistance,direction):
     #run NWChem constrained optimization, TS opt, frequency calc, and single-point energy evaluation
     os.system("mkdir nwchem")
     os.chdir("nwchem")
-    os.system("echo {0}: running NWChem Constrained Opt, then TS opt, and then Freq at {1}/{2} \nthen Single-Point evaluation at {3}/{4}".format(datetime.now(),xc[2],bs[2],xc[3],bs[3]))
+    os.system("echo {0}: running NWChem Constrained Opt, then TS opt, and then Freq at {1}/{2} and Single-Point evaluation at {3}/{4}".format(datetime.now(),xc[2],bs[2],xc[3],bs[3]))
     calcID_nwchem = run_nwchem(chrg,uhf,"autoTS",xc,bs,cutoff,atom1=atomNo1,atom2=atomNo2)
     os.system("echo {0}: tracking NWChem...".format(datetime.now()))
     track_nwchem(calcID_nwchem)
