@@ -56,7 +56,7 @@ def run_nwchem(chrg,uhf,calcType,xc,bs,cutoff,**kwargs):
         atomNo2 = kwargs.get('atom2')
         if calcType == "refine":
             xyz="../minimum_lowest.xyz"
-            optType=""
+            optType="optimize"
         else:
             xyz="../TSguess.xyz"
             optType="saddle"
@@ -152,7 +152,7 @@ driver
 end
 task shell "echo @starting saddle optimization" 
 """.format(atomNo1,atomNo2))        
-        input.write("""task dft optimize {0}
+        input.write("""task dft {0}
 task shell "echo @starting vibrational calculation"
 task dft freq numerical
 task shell "echo @starting single point calculation"
