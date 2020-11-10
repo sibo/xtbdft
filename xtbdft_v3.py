@@ -352,7 +352,7 @@ def parseArgs():
     parser.add_argument("-xc",action="store",dest="xc",default=default_xc,type=str)
     parser.add_argument("-bs",action="store",dest="bs",default=default_bs,type=str)
     parser.add_argument("-cutoff",action="store",dest="cutoff",default=default_cutoff,type=float)
-    parser.add_argument("-mode", action="store",dest="mode",default="autoConf",type=str,nargs='+')
+    parser.add_argument("-mode", action="store",dest="mode",default=["autoConf"],type=str,nargs='+')
     parser.add_argument("filename",action="store")
     results=parser.parse_args()
     if (not os.path.isfile(results.filename)):
