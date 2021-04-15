@@ -2,6 +2,14 @@
 
 This is the official repository of the `xtbdft` program, a wrapper script for multi-level molecular modelling powered by CREST/GFN2-XTB and NWChem (DFT)
 
+## Pre-requisites
+Python3.x
+[XTB](https://github.com/grimme-lab/xtb/releases) (version 6.3.2)
+[CREST](https://github.com/grimme-lab/crest/releases) (version 2.11)
+[NWChem](https://github.com/nwchemgit/nwchem/releases) (version 6.8)
+
+XTBDFT has not been tested with, but may happen to work with, newer versions of XTB, CREST, and NWChem.
+
 ## Installation
 [latest release page](https://github.com/sibo/xtbdft/releases/latest)
 
