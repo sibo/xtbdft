@@ -13,6 +13,10 @@ XTBDFT has not been tested with, but may happen to work with, newer versions of 
 ## Installation
 [latest release page](https://github.com/sibo/xtbdft/releases/latest)
 
+## Usage
+```bash
+nohup python3 ~/path/to/script/xtbdft.py coords.xyz > autoConf.out &
+```
 
 ## Citations
 
