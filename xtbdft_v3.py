@@ -142,13 +142,21 @@ set "ao basis" bs1
 end
 task shell "echo @starting constrained opt"
 task dft optimize
-geometry adjust noautoz #unfix reaction coordinate, switch to cartesian opt for saddle pt search
-  zcoord
-    bond {0} {1}
-  end
+
+driver
+  maxiter 0
+  xyz opt/optC
 end
-driver 
-  xyz opt/optSaddle
+task dft optimize ignore
+
+geometry noautoz #unfix reaction coordinate, switch to cartesian opt for saddle pt search
+  load opt/optC-000.xyz
+end
+driver
+  clear
+  maxiter 400
+  sadstp 0.02
+  xyz opt/optS
 end
 task shell "echo @starting saddle optimization" 
 """.format(atomNo1,atomNo2))        
@@ -366,6 +374,7 @@ def parseArgs():
     if (len(xc) != 4 or len(bs) != 4):
         print ("Error: -bs and -xc must be comma-delimited strings of exactly four items. Omitting them will default to them to: \n-xc b3lyp,,b3lyp,b3lyp \n-bs def2-sv(p),,def2-svp,def2-tzvp")
         sys.exit(1)
+    print("mode = {}".format(results.mode))
     mode = results.mode[0]
     if mode == "autoConf":
         pass
@@ -449,13 +458,38 @@ def distance(atom1, atom2):
     deltaZ = float(atom1[3]) - float(atom2[3])
     return math.pow(math.pow(deltaX,2)+math.pow(deltaY,2)+math.pow(deltaZ,2),0.5)
 
-def autoTS(file,chrg,uhf,xc,bs,atomNo1,atomNo2,finalScanDistance,direction):
-    #import matplotlib.pyplot as plt
-    
+def autoTS(file,chrg,uhf,xc,bs,atomNo1,atomNo2,finalScanDistance):
+    from shutil import copyfile
     #set up XTB scan
     os.system("echo {0}: setting up XTB xconstrains file".format(datetime.now()))
-    steps=100
     startScanDistance=getBondDistance(file,atomNo1,atomNo2)
+    barrier1=xtbTS(file,chrg,uhf,atomNo1,atomNo2,startScanDistance,finalScanDistance,"forward")
+    barrier2=xtbTS(file,chrg,uhf,atomNo1,atomNo2,finalScanDistance,startScanDistance,"backward")
+    if barrier1 < barrier2:
+        direction="_forward"
+    else:
+        direction="_backward"
+    copyfile("scan_"+str(atomNo1)+"_"+str(atomNo2)+direction+"/TSguess.xyz","./TSguess.xyz") 
+    #run NWChem constrained optimization, TS opt, frequency calc, and single-point energy evaluation
+    os.system("mkdir nwchem")
+    os.chdir("nwchem")
+    os.system("echo {0}: running NWChem Constrained Opt, then TS opt, and then Freq at {1}/{2} and Single-Point evaluation at {3}/{4}".format(datetime.now(),xc[2],bs[2],xc[3],bs[3]))
+    calcID_nwchem = run_nwchem(chrg,uhf,"autoTS",xc,bs,cutoff,atom1=atomNo1,atom2=atomNo2)
+    os.system("echo {0}: tracking NWChem...".format(datetime.now()))
+    track_nwchem(calcID_nwchem)
+    clean_nwchem()
+    os.system("echo {0}: finished NWChem!".format(datetime.now()))
+
+    #optional: script goodvibes correction
+    os.system("echo {0}: running GoodVibes.py".format(datetime.now()))
+    goodvibes("nwchem.out")   
+    
+def xtbTS(file,chrg,uhf,atomNo1,atomNo2,startScanDistance,finalScanDistance,direction): 
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        pass
+    steps=100
     dir = "scan_" + str(atomNo1) + "_" + str(atomNo2) + "_" + direction
     os.system("mkdir -p " + dir)
     os.system("cp " + file + " " + dir + "/")
@@ -489,10 +523,13 @@ def autoTS(file,chrg,uhf,xc,bs,atomNo1,atomNo2,finalScanDistance,direction):
     for i in range(0,len(energies)):
         f.write(str(bondLengths[i]) + "," + str(energies[i]) + "\n")
     f.close()
-    #plt.scatter(bondLengths,energies)
-    #plt.xlabel(r"Bond Distance ($\AA$)")
-    #plt.ylabel("relative E (kcal/mol)")
-    #plt.savefig("scanPES.png")
+    try:
+        plt.scatter(bondLengths,energies)
+        plt.xlabel(r"Bond Distance ($\AA$)")
+        plt.ylabel("relative E (kcal/mol)")
+        plt.savefig("scanPES.png")
+    except:
+        pass
     maxEnergy = energies[0]
     maxStruct = []
     for i in range(1,len(energies)):
@@ -504,20 +541,9 @@ def autoTS(file,chrg,uhf,xc,bs,atomNo1,atomNo2,finalScanDistance,direction):
     for coord in maxStruct:
         f.write(" ".join(coord) + "\n")
     f.close()
+    os.chdir("..")
+    return maxEnergy
     
-    #run NWChem constrained optimization, TS opt, frequency calc, and single-point energy evaluation
-    os.system("mkdir nwchem")
-    os.chdir("nwchem")
-    os.system("echo {0}: running NWChem Constrained Opt, then TS opt, and then Freq at {1}/{2} and Single-Point evaluation at {3}/{4}".format(datetime.now(),xc[2],bs[2],xc[3],bs[3]))
-    calcID_nwchem = run_nwchem(chrg,uhf,"autoTS",xc,bs,cutoff,atom1=atomNo1,atom2=atomNo2)
-    os.system("echo {0}: tracking NWChem...".format(datetime.now()))
-    track_nwchem(calcID_nwchem)
-    clean_nwchem()
-    os.system("echo {0}: finished NWChem!".format(datetime.now()))
-
-    #optional: script goodvibes correction
-    os.system("echo {0}: running GoodVibes.py".format(datetime.now()))
-    goodvibes("nwchem.out")   
 
 
 if __name__ == "__main__":
@@ -530,5 +556,5 @@ if __name__ == "__main__":
     if (mode == "autoConf"):
         autoConf(file,chrg,uhf,xc,bs,cutoff)
     elif (mode == "autoTS"):
-        autoTS(file,chrg,uhf,xc,bs,params[0],params[1],params[2],"forward")
+        autoTS(file,chrg,uhf,xc,bs,params[0],params[1],params[2])
     
