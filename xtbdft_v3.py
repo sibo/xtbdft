@@ -134,12 +134,12 @@ end
 set "ao basis" bs1
 """.format(xyz))
         if calcType == "autoTS":
-            os.system("mkdir -p opt")
             input.write("""geometry adjust #fix reaction coordinate (bond)
   zcoord
     bond {0} {1} constant
   end
 end
+task shell "mkdir -p opt"
 task shell "echo @starting constrained opt"
 task dft optimize
 
