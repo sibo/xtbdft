@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 #
 #running in headless mode: nohup python3 ~/path/to/this/file/xtb-nwchem.py geom.xyz [-chrg int] [-uhf int] [-xc str,str,str,str] [-bs str,str,str,str] > autoConf.out &
 #
@@ -25,19 +25,19 @@ realpath = os.path.realpath(__file__)
 calcName=os.path.basename(os.getcwd())
 startPath=os.getcwd()
 
-def run_crest(file,chrg,uhf):
-    #if(os.path.isfile(os.getcwd()+"/crest.out")):
-    #    go=input("crest.out already exists. Are you sure you want to proceed? (y/n)")
-    #    if(go != 'y' and go != 'Y'):
-    #        print("Okay, aborting")
-    #        exit(1)
+def run_crest(file,chrg,uhf,**kwargs):
+    TS=False
+    TS=kwargs.get('TS')
+    tsString = ""
+    if TS == True:
+        tsString = "-nozs -cinp .xcontrol"
     script=open("submit_crest_{0}.sh".format(calcName), "w")
     script.write(msubHeader+"""
 export OMP_STACKSIZE=1G
 #source {0}/share/xtb/config_env.bash
 ulimit -s unlimited
 cd {1}
-{2}/bin/crest {3} --chrg {4} --uhf {5} -T {6} > crest.out""".format(xtbPath,os.getcwd(),xtbPath,file,chrg,uhf,NP))
+{2}/bin/crest {3} --chrg {4} --uhf {5} -T {6} {7} > crest.out""".format(xtbPath,os.getcwd(),xtbPath,file,chrg,uhf,NP,tsString))
     script.close()
     #calcID = subprocess.run(['msub','submit_crest_{0}.sh'.format(calcName)], stdout=subprocess.PIPE).stdout.decode('utf-8')
     calcID = subprocess.check_output(['msub','submit_crest_{0}.sh'.format(calcName)]).decode('utf-8').replace("\n","")
@@ -46,20 +46,20 @@ cd {1}
 
 def run_nwchem(chrg,uhf,calcType,xc,bs,cutoff,**kwargs):
     calcName2 = calcName +"_"+calcType
-    if calcType == "crude":
+    if calcType == "crude" or calcType == "crudeTS":
         xc1,xc2 = xc[0],xc[1]
         bs1,bs2 = bs[0],bs[1]
-    elif calcType == "refine" or calcType=="autoTS":
+    elif calcType == "refine" or calcType == "refineTS":
         xc1,xc2 = xc[2],xc[3]
         bs1,bs2 = bs[2],bs[3]     
-        atomNo1 = kwargs.get('atom1')
-        atomNo2 = kwargs.get('atom2')
+        xyz="../minimum_lowest.xyz"
         if calcType == "refine":
-            xyz="../minimum_lowest.xyz"
             optType="optimize"
         else:
-            xyz="../TSguess.xyz"
             optType="saddle"
+    if calcType == "crudeTS" or calcType == "refineTS":
+        atomNo1 = kwargs.get('atom1')
+        atomNo2 = kwargs.get('atom2')
     input=open("{0}.nw".format(calcName2),"w")
     input.write("""memory heap 200 mb stack 1000 mb global 2800 mb
 start calc
@@ -86,7 +86,7 @@ end
   * library {0}
 end
 """.format(bs2))
-    if calcType == "crude":
+    if calcType == "crude" or calcType == "crudeTS":
         input.write("""dft
     grid medium
     convergence energy 1d-6
@@ -106,7 +106,15 @@ geometry units angstroms noautosym
 end
 dft
     vectors input atomic output bs1.mos
-end
+end""".format(i))
+            if calcType == "crudeTS":
+                input.write("""
+geometry adjust # fix reaction coordinate (bond length)
+    zcoord
+        bond {0} {1} constant
+    end
+end""".format(atomNo1,atomNo2))
+            input.write("""
 task dft optimize
 task shell "echo conf {0} geometry opt complete"
 """.format(i))
@@ -118,7 +126,7 @@ dft
   vectors input atomic output bs2.mos
 end
 """.format(xc2,bs2,xc1,bs1))
-    elif calcType == "refine" or calcType == "autoTS":
+    elif calcType == "refine" or calcType == "refineTS":
         input.write("""dft
     grid fine
     convergence energy 1d-8
@@ -133,7 +141,7 @@ geometry units angstroms noautosym
 end
 set "ao basis" bs1
 """.format(xyz))
-        if calcType == "autoTS":
+        if calcType == "refineTS":
             input.write("""geometry adjust #fix reaction coordinate (bond)
   zcoord
     bond {0} {1} constant
@@ -172,7 +180,7 @@ end
 task dft energy
 """.format(optType,xc2))    
     else:
-        print("NWChem must have a calctype: crude, refine, or autoTS")
+        print("NWChem must have a calctype: crude, refine, crudeTS, or refineTS")
         exit(1)
     
     #submit nwchem job to msub system
@@ -474,20 +482,33 @@ def autoTS(file,chrg,uhf,xc,bs,atomNo1,atomNo2,finalScanDistance):
     #run crest on TSguess.xyz, constraining bond of interest
     os.system("echo {0}: setting up CREST for TS guess files".format(datetime.now()))
     crestTS("TSguess.xyz",chrg,uhf,atomNo1,atomNo2)
-    
-    #run NWChem constrained optimization, TS opt, frequency calc, and single-point energy evaluation
+
+    #run NWChem constrained optimization
     os.system("mkdir nwchem")
     os.chdir("nwchem")
-    os.system("echo {0}: running NWChem Constrained Opt, then TS opt, and then Freq at {1}/{2} and Single-Point evaluation at {3}/{4}".format(datetime.now(),xc[2],bs[2],xc[3],bs[3]))
-    calcID_nwchem = run_nwchem(chrg,uhf,"autoTS",xc,bs,cutoff,atom1=atomNo1,atom2=atomNo2)
+    os.system("echo {0}: running NWChem crude Constrained Opt on crest ensemble".format(datetime.now()))
+    calcID_nwchem = run_nwchem(chrg,uhf,"crudeTS",xc,bs,cutoff,atom1=atomNo1,atom2=atomNo2)
     os.system("echo {0}: tracking NWChem...".format(datetime.now()))
     track_nwchem(calcID_nwchem)
     clean_nwchem()
-    os.system("echo {0}: finished NWChem!".format(datetime.now()))
+    
+    #determine lowest energy conformer and refine using NWChem
+    os.system("echo {0}: running pes_parse subroutine".format(datetime.now()))
+    pes_parse("nwchem.out")
+    os.system("mkdir refine")
+    os.chdir("refine")
+    os.system("echo {0}: running NWChem refine Constrained Opt, TS opt, frequency calc, and single-point energy evaluation".format(datetime.now()))
+    calcID_nwchem = run_nwchem(chrg,uhf,"refineTS",xc,bs,cutoff,atom1=atomNo1,atom2=atomNo2)
+    os.system("echo {0}: tracking NWChem refine".format(datetime.now()))
+    track_nwchem(calcID_nwchem)
+    clean_nwchem()
 
     #optional: script goodvibes correction
     os.system("echo {0}: running GoodVibes.py".format(datetime.now()))
     goodvibes("nwchem.out")   
+    
+    
+    
     
 def xtbTS(file,chrg,uhf,atomNo1,atomNo2,startScanDistance,finalScanDistance,direction): 
     try:
@@ -553,38 +574,38 @@ def crestTS(file,chrg,uhf,atomNo1,atomNo2):
     dir = "crestTS"
     os.system("mkdir -p " + dir)
     os.system("cp " + file + " " + dir + "/")
-    f=open(dir + "/xcontrol","w+")
-    command = "$constrain \n  force constant = 0.5 \n  atoms: " + str(atomNo1) + "," + str(atomNo2) + "\n  reference=coord.ref\n$metadyn\n  atoms: " + atomList("TSguess.xyz",atomNo1,atomNo2) + "\n$end\n"
-    f.write(command)
-    f.close()
+    #f=open(dir + "/xcontrol","w+")
+    #command = "$constrain \n  force constant = 0.5 \n  atoms: " + str(atomNo1) + "," + str(atomNo2) + "\n  reference=coord.ref\n$metadyn\n  atoms: " + atomList("TSguess.xyz",atomNo1,atomNo2) + "\n$end\n"
+    #f.write(command)
+    #f.close()
     os.chdir(dir)
+    os.system("crest {} --constrain {},{}".format(file,atomNo1,atomNo2))
+    time.sleep(120) #wait 2min for crest --constrain to finish
+    os.system("mv .xcontrol.sample .xcontrol")
     os.system("echo {0}: running CREST".format(datetime.now()))
-    script=open("submit_crest_{0}.sh".format(calcName), "w")
-    script.write(msubHeader+"""
-export OMP_STACKSIZE=1G
-#source {0}/share/xtb/config_env.bash
-ulimit -s unlimited
-cd {1}
-{2}/bin/crest {3} --chrg {4} --uhf {5} -T {6} -nozs -cinp xcontrol > crest.out""".format(xtbPath,os.getcwd(),xtbPath,file,chrg,uhf,NP))
-    script.close()
-    calcID = subprocess.check_output(['msub','submit_crest_{0}.sh'.format(calcName)]).decode('utf-8').replace("\n","")
-    os.system("echo \"calcID is {0}\" | tee {0}.calcID".format(calcID)) 
+    run_crest(file,chrg,uhf,TS=True)
     track_crest("place","holder")
-    os.system("cp crest_best.xyz ../TSguess.xyz")
-    os.chdir("..")
-    return true
+    return True
     
 def atomList(file,atomNo1,atomNo2):
     with open(file) as f:
         firstline = f.readlines()[0].rstrip()
     totalAtoms=int(firstline)
     print(totalAtoms)
-    aList=[]
+    a=""
+    inRange=False
     for n in range(1,totalAtoms+1):
         if n != atomNo1 and n != atomNo2:
-            aList.append(n)
-    return str(aList)[1:-1]
-    
+            if inRange == False:
+                a += "," + str(n)
+                inRange = True
+            elif inRange == True and n == totalAtoms:
+                a += "-" + str(n)
+        elif n == atomNo1 or n == atomNo2:
+            if inRange == True:
+                a += "-" + str(n-1)
+                inRange = False
+    return a 
 
 if __name__ == "__main__":
     print("Reminder on how to run xtb-nwchem.py in headless mode:")
