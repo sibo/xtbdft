@@ -12,19 +12,24 @@ XTBDFT has not been tested with, but may happen to work with, newer versions of 
 
 ## Installation
 [latest release page](https://github.com/sibo/xtbdft/releases/latest)
-- 
+- make the script executable (```bash chmod +x xtbdft_vX.py```)
+- add the location of xtbdft_vX.py to your path (in ~/.bashrc, add ```bash export PATH=$PATH:~/path/to/script/```
 
 ## Usage
 ```bash
-nohup python3 ~/path/to/script/xtbdft.py guess.xyz [-chrg int] [-uhf int] [-xc str,str,str,str] [-bs str,str,str,str] [-mode autoConf|autoTS] > outputFile.out &
+nohup xtbdft_v5.py guess.xyz [-chrg int] [-uhf int] [-xc str,str,str,str] [-bs str,str,str,str] [-mode autoConf|autoTS] [-other=["skipCrest"|crestParameters] &
 ```
-For determining the lowest energy conformation of a neutral, singlet molecule (as in reference 1 below, the input can be simplified to:
+For determining the lowest energy conformation of a neutral, singlet-spin molecule (as in reference 1 below, the input can be simplified to:
 ```bash
-nohup python3 ~/path/to/script/xtbdft.py guess.xyz > outputFile.out &
+nohup xtbdft_v5.py guess.xyz &
+```
+For determining the lowest energy conformation of a cationic, quartet-spin molecule, containing a PhCl bond that undergoes undesired oxidative addition under normal CREST parameters:
+```bash
+nohup xtbdft_v5.py guess.xyz -chrg 1 -uhf 3 -other="-cbonds 0.1" &
 ```
 If instead you'd like to scan for a transition state of a monocationic, doublet species, in which the distance between atoms X and Y is adjusted to Z Angstroms over 100 steps, the input is:
 ```bash
-nohup python3 ~/path/to/script/xtbdft.py guess.xyz -chrg 1 -uhf 1 -mode autoTS X Y Z > outputFile.out &
+nohup xtbdft_v5.py guess.xyz -chrg 1 -uhf 1 -mode autoTS X Y Z &
 ```
 
 ## Citations
