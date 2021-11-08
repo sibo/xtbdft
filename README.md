@@ -13,7 +13,7 @@ XTBDFT has not been tested with, but may happen to work with, newer versions of 
 ## Installation
 [latest release page](https://github.com/sibo/xtbdft/releases/latest)
 - make the script executable (```chmod +x xtbdft_vX.py```)
-- add the location of xtbdft_vX.py to your path (in ~/.bashrc, add ```export PATH=$PATH:~/path/to/script/```
+- add the location of xtbdft_vX.py to your path (in ~/.bashrc, add ```export PATH=$PATH:~/path/to/script/```)
 
 ## Usage
 ```bash
