@@ -7,6 +7,7 @@ This is the official repository of the `xtbdft` program, a wrapper script for mu
 - [XTB](https://github.com/grimme-lab/xtb/releases) (version 6.3.2)
 - [CREST](https://github.com/grimme-lab/crest/releases) (version 2.11)
 - [NWChem](https://github.com/nwchemgit/nwchem/releases) (version 6.8)
+- [Goodvibes](https://github.com/patonlab/GoodVibes/tree/54d0750b0ba7aa9121c284519271a9a0bd0764a9) (version 3.0.1, commit 54d0750)
 
 XTBDFT has not been tested with, but may happen to work with, newer versions of XTB, CREST, and NWChem.
 
