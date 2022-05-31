@@ -399,7 +399,7 @@ def parseArgs():
     xc = results.xc.split(",")
     bs = results.bs.split(",")
     if (len(xc) != 4 or len(bs) != 4):
-        print ("Error: -bs and -xc must be comma-delimited strings of exactly four items. Omitting them will default to them to: \n-xc b3lyp,,b3lyp,b3lyp \n-bs def2-svp* ,,def2-svp,def2-tzvp")
+        print ("Error: -bs and -xc must be comma-delimited strings of exactly four items. Omitting them will default to them to: \n-xc b3lyp,,b3lyp,b3lyp \n-bs def2-svp,,def2-svp,def2-tzvp")
         sys.exit(1)
     print("mode = {}".format(results.mode))
     mode = results.mode[0]
