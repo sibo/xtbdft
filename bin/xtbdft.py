@@ -4,8 +4,8 @@
 #
 import os, sys, subprocess, time, math
 from datetime import datetime
-goodvibesPy = "~/_programs/goodvibes/goodvibes-3.0.1/goodvibes/GoodVibes.py"
-xtbPath="~/_programs/xtb" # xtb and crest binaries must be located in xtbPath/bin/
+goodvibesPy = "~/xtbdft/goodvibes-3.0.1/goodvibes/GoodVibes.py"
+xtbPath="~/xtbdft/xtb" # xtb and crest binaries must be located in xtbPath/bin/
 default_cutoff = 3.0
 default_xc = "b3lyp,,b3lyp,b3lyp"
 default_bs = "def2-svp,,def2-svp,def2-tzvp" #xtbdft_v4 default: "def2-sv(p),,def2-svp,def2-tzvp"
@@ -21,6 +21,16 @@ msubHeader="""#!/bin/bash
 """.format(NP)
 
 ### do not change below code unless you know what you're doing!
+if !os.path.exists(goodvibesPy):
+    print("Error: GoodVibes.py does not exist at " + goodvibesPy + "\n Please modify line 7 of xtbdft.py to reflect where GoodVibes.py is located.\nExiting...")
+    exit()
+if !os.path.exists(xtbPath + "/bin/xtb"):
+    print("Error: xtb does not exist at " + xtbPath + "/bin/xtb \n Please modify line 8 of xtbdft.py to reflect where xtb is located.\nExiting...")
+    exit()
+if !os.path.exists(xtbPath + "/bin/crest"):
+    print("Error: crest does not exist at " + xtbPath + "/bin/crest \n Please modify line 8 of xtbdft.py to reflect where crest is located.\nExiting...")
+    exit()
+
 realpath = os.path.realpath(__file__)
 calcName=os.path.basename(os.getcwd())
 startPath=os.getcwd()
