@@ -5,7 +5,7 @@
 import os, sys, subprocess, time, math
 from datetime import datetime
 goodvibesPy = "~/xtbdft/GoodVibes/goodvibes/GoodVibes.py"
-xtbPath="~/xtbdft/xtb" # xtb and crest binaries must be located in xtbPath/bin/
+xtbPath="~/xtbdft/xtb-6.3.2" # xtb and crest binaries must be located in xtbPath/bin/
 default_cutoff = 3.0
 default_xc = "b3lyp,,b3lyp,b3lyp"
 default_bs = "def2-svp,,def2-svp,def2-tzvp" #xtbdft_v4 default: "def2-sv(p),,def2-svp,def2-tzvp"
