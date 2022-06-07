@@ -18,15 +18,18 @@ NP=24
 max_walltime_days=14
 mem_gb=100
 
-msubHeader="""#!/bin/bash
-#SBATCH -N {1}
-#SBATCH --ntasks-per-node {0}
-#SBATCH -t {2}-00:00:00
-#SBATCH --mem={3}G
-#PBS -l nodes={1}:ppn={0}
-#PBS -l walltime={2}:00:00:00
-#PBS -l mem={3}gb
-""".format(NP,nodes,max_walltime_days,mem_gb)
+if os.system("which squeue") == 0:
+	msubHeader="""#!/bin/bash
+	#SBATCH -N {1}
+	#SBATCH --ntasks-per-node {0}
+	#SBATCH --time={2}-00:00:00
+	""".format(NP,nodes,max_walltime_days,mem_gb)
+else:
+	msubHeader="""#!/bin/bash
+	#PBS -l nodes={1}:ppn={0}
+	#PBS -l walltime={2}:00:00:00
+	#PBS -l mem={3}gb
+	""".format(NP,nodes,max_walltime_days,mem_gb)
 
 ### do not change below code unless you know what you're doing!
 if not (os.path.exists(os.path.expanduser(goodvibesPy))):
@@ -58,7 +61,7 @@ def run_crest(file,chrg,uhf,**kwargs):
         paramString=""
         for p in params:
             if p.find("cbonds") == 0:
-                print("CBonds for TS search alraedy implemented manually to combine constraint files. Combining TS constraints and cbond constraints can result in frozen CREST calcs")
+                print("CBonds for TS search already implemented manually to combine constraint files. Combining TS constraints and cbond constraints can result in frozen CREST calcs")
                 pass
             elif p != '':
                 paramString += "-" + p
