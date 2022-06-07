@@ -18,11 +18,11 @@ XTBDFT has not been tested with, but may happen to work with, newer versions of 
 git clone https://https://github.com/sibo/xtbdft.git
 cd xtbdft
 ```
-2. (A) If performing a complete clean installation, just run complete_install.py
+2a. If performing a complete clean installation, just run complete_install.py
 ```bash
 ./complete_install.sh
 ```
-2. (B) Or if there are pre-existing installations of xtb, crest, nwchem, and/or goodvibes, comment out the relevant section(s) from .complete_install.sh and then execute it.
+2b. Or if there are pre-existing installations of xtb, crest, nwchem, and/or goodvibes, comment out the relevant section(s) from .complete_install.sh and then execute it.
 
 3. Modify the first 25 lines of bin/xtbdft.py to fit your computing environment, if necessary.
 
@@ -34,13 +34,17 @@ For determining the lowest energy conformation of a neutral, singlet-spin molecu
 ```bash
 nohup xtbdft.py guess.xyz &
 ```
-For determining the lowest energy conformation of a cationic, quartet-spin molecule, containing a PhCl bond that undergoes undesired oxidative addition under normal CREST parameters:
+For determining the lowest energy conformation of a cationic, quartet-spin transition metal complex, containing a PhCl ligand that undergoes undesired oxidative addition under normal CREST parameters:
 ```bash
-nohup xtbdft.py guess.xyz -chrg 1 -uhf 3 -other="-cbonds 0.1" &
+nohup xtbdft.py guess.xyz -chrg 1 -uhf 3 -other="-cbonds 0.2" &
 ```
-If instead you'd like to scan for a transition state of a monocationic, doublet species, in which the distance between atoms X and Y is adjusted to Z Angstroms over 100 steps, the input is:
+For generating a guess transition state of a monocationic, doublet species, in which the distance between atoms X and Y is adjusted to Z Angstroms over 100 steps, but skipping CREST conformation searching, the input is:
 ```bash
-nohup xtbdft.py guess.xyz -chrg 1 -uhf 1 -mode autoTS X Y Z &
+nohup xtbdft.py guess.xyz -chrg 1 -uhf 1 -mode autoTS X Y Z -other="skipCrest" &
+```
+To scan for a transition state of a monocationic, doublet species, in which the distance between atoms X and Y is adjusted to Z Angstroms over 100 steps, and then constrain all bonds during CREST conformational searching with spring constant 1.0 Hartree/au, the input is:
+```bash
+nohup xtbdft.py guess.xyz -chrg 1 -uhf 1 -mode autoTS X Y Z -other="-cbonds 1.0" &
 ```
 XTBDFT is currently configured to run on a compute cluster with MSUB scheduler, however, it can be run locally for debugging purposes:
 ```bash
