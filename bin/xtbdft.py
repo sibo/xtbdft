@@ -19,7 +19,7 @@ max_walltime_days=14
 mem_gb=100
 
 msubHeader="""#!/bin/bash
-#SBATCH n {1}
+#SBATCH -N {1}
 #SBATCH --ntasks-per-node {0}
 #SBATCH -t {2}-00:00:00
 #SBATCH --mem={3}G
