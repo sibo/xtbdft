@@ -1,6 +1,6 @@
 # xtbdft
 
-This is the official repository of the `xtbdft` program, a wrapper script for multi-level molecular modelling powered by CREST/GFN2-xTB, NWChem (DFT), and Goodvibes (anharmonic frequency corrections). These underlying softwares are open-source.
+This is the official repository of the `xtbdft` program, a wrapper script for multi-level molecular modelling powered by CREST/GFN2-xTB, NWChem (DFT), and Goodvibes (anharmonic frequency corrections). XTBDFT and all underlying softwares are open-source.
 
 ## Pre-Requisites
 - Python3.x
@@ -8,12 +8,13 @@ This is the official repository of the `xtbdft` program, a wrapper script for mu
 - [CREST](https://github.com/grimme-lab/crest/releases) (version 2.11, GNU Lesser General Public License v3)
 - [NWChem](https://github.com/nwchemgit/nwchem/releases) (version 6.8, Educational Community License v2)
 - [Goodvibes](https://github.com/patonlab/GoodVibes/tree/54d0750b0ba7aa9121c284519271a9a0bd0764a9) (version 3.0.1, commit 54d0750, MIT License)
+- [Moab](https://adaptivecomputing.com/moab-hpc-suite/) or [Slurm](https://github.com/mattthias/slurm) (Mattthias version 0.4.3) workload scheduler
 
-XTBDFT has not been tested with, but may happen to work with, newer versions of XTB, CREST, and NWChem.
+XTBDFT has not been tested with newer versions of XTB, CREST, NWChem, or Slurm. 
 
 ## Installation
-[latest release page](https://github.com/sibo/xtbdft/releases/latest)
-1. Clone this repository (or unzip a [release](https://github.com/sibo/xtbdft/releases/latest)) and navigate into the new directory in a terminal:
+0. The installation of a workload scheduler such as Moab or Slurm is beyond the scope of these instructions, but may be accomplished [following instructions elsewhere](http://web.archive.org/web/20210708045411/https://blog.llandsmeer.com/tech/2020/03/02/slurm-single-instance.html).
+2. Clone this repository (or unzip a [static release](https://github.com/sibo/xtbdft/releases/latest)) and navigate into the new directory in a terminal:
 ```bash
 git clone https://https://github.com/sibo/xtbdft.git
 cd xtbdft
