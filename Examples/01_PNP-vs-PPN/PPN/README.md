@@ -6,4 +6,4 @@ by Sibo Lin
 
 Enter this example code in the command line, in this directory, to explore the conformational space of N-isopropyl-P,P,P',P'-tetraphenyl-iminobisphosphine:
 
-`nohup xtbdft.py PNP.xyz &`
+`nohup xtbdft.py PPN.xyz &`
