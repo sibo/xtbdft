@@ -80,7 +80,7 @@ cd {1}
 {2}/bin/crest {3} --chrg {4} --uhf {5} -T {6} {7} {8}> crest.out""".format(xtbPath,os.getcwd(),xtbPath,file,chrg,uhf,NP,tsString,paramString))
     script.close()
     #calcID = subprocess.run(['msub','submit_crest_{0}.sh'.format(calcName)], stdout=subprocess.PIPE).stdout.decode('utf-8')
-    calcID = subprocess.check_output([qsub,'submit_crest_{0}.sh'.format(calcName)]).decode('utf-8').replace("\n","")
+    calcID = subprocess.check_output((qsub + ' submit_crest_{0}.sh'.format(calcName)).split()).decode('utf-8').replace("\n","")
     os.system("echo \"calcID is {0}\" | tee {0}.calcID".format(calcID))
     return calcID
 
@@ -233,7 +233,7 @@ cd {0}
 mpirun -np {1} nwchem_mpich {2}.nw > nwchem.out
 echo "{3} (nwchem) submitted" """.format(os.getcwd(),NP,calcName2,calcName2))
     script.close()
-    calcID = subprocess.check_output([qsub,'submit_nwchem_{0}.sh'.format(calcName2)]).decode('utf-8').replace("\n","")
+    calcID = subprocess.check_output((qsub + ' submit_nwchem_{0}.sh'.format(calcName2)).split()).decode('utf-8').replace("\n","")
     os.system("echo \"calcID is {0}\" | tee {0}.calcID".format(calcID))
     return calcID
 
