@@ -13,12 +13,19 @@ default_chrg = 0
 default_uhf = 0
 
 ### edit below to match your computing environment
+nodes=1
 NP=24
+max_walltime_days=14
+mem_gb=100
 msubHeader="""#!/bin/bash
-#PBS -l nodes=1:ppn={0}
-#PBS -l walltime=14:00:00:00
-#PBS -l mem=100gb
-""".format(NP)
+#SBATCH n {1}
+#SBATCH --ntasks-per-node {0}
+#SBATCH -t {2}-00:00:00
+#SBATCH --mem={3}G
+#PBS -l nodes={1}:ppn={0}
+#PBS -l walltime={2}:00:00:00
+#PBS -l mem={3}gb
+""".format(NP,nodes,max_walltime_days)
 
 ### do not change below code unless you know what you're doing!
 if not (os.path.exists(os.path.expanduser(goodvibesPy))):
