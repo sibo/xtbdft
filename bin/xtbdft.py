@@ -17,6 +17,7 @@ nodes=1
 NP=24
 max_walltime_days=14
 mem_gb=100
+
 msubHeader="""#!/bin/bash
 #SBATCH n {1}
 #SBATCH --ntasks-per-node {0}
@@ -25,7 +26,7 @@ msubHeader="""#!/bin/bash
 #PBS -l nodes={1}:ppn={0}
 #PBS -l walltime={2}:00:00:00
 #PBS -l mem={3}gb
-""".format(NP,nodes,max_walltime_days)
+""".format(NP,nodes,max_walltime_days,mem_gb)
 
 ### do not change below code unless you know what you're doing!
 if not (os.path.exists(os.path.expanduser(goodvibesPy))):
