@@ -26,6 +26,12 @@ cd xtbdft
 2b. Or if there are pre-existing installations of xtb, crest, nwchem, and/or goodvibes, comment out the relevant section(s) from .complete_install.sh and then execute it. This option is particularly useful if you choose to compile NWChem from source to optimize DFT performance.
 
 3. Modify the first 25 lines of bin/xtbdft.py to fit your computing environment, if necessary.
+- goodvibes.py location (default ~/xtbdft/GoodVibes/goodvibes/GoodVibes.py)
+- path for xtb and crest binaries (default ~/xtbdft/xtb-6.3.2)
+- nodes per calculation (default 1)
+- CPUs per calculation (default 24)
+- maximum wall time per calculation (default 14 days)
+- memory per calculation (default 100GB)
 
 ## Usage
 ```bash
