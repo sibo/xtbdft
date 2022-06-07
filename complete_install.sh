@@ -1,5 +1,8 @@
 #!/bin/bash
 
+#adding XTBDFT to path
+echo -e "export PATH=\$PATH:$PWD/bin/ \n" >> ~/.bashrc
+
 #install XTB v6.3.2 ("oldkernel" link may need to be uncommented, if running an older Linux version)
 #newer versions of XTB may or may not work with XTBDFT v1.0
 echo "Installing XTB v6.3.2..."
