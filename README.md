@@ -1,19 +1,19 @@
 # xtbdft
 
-This is the official repository of the `xtbdft` program, a wrapper script for multi-level molecular modelling powered by CREST/GFN2-XTB and NWChem (DFT)
+This is the official repository of the `xtbdft` program, a wrapper script for multi-level molecular modelling powered by CREST/GFN2-xTB, NWChem (DFT), and Goodvibes (anharmonic frequency corrections). These underlying softwares are open-source.
 
 ## Pre-Requisites
 - Python3.x
-- [XTB](https://github.com/grimme-lab/xtb/releases) (version 6.3.2)
-- [CREST](https://github.com/grimme-lab/crest/releases) (version 2.11)
-- [NWChem](https://github.com/nwchemgit/nwchem/releases) (version 6.8)
-- [Goodvibes](https://github.com/patonlab/GoodVibes/tree/54d0750b0ba7aa9121c284519271a9a0bd0764a9) (version 3.0.1, commit 54d0750)
+- [GFN-xTB](https://github.com/grimme-lab/xtb/releases) (version 6.3.2, GNU Lesser General Public License v3)
+- [CREST](https://github.com/grimme-lab/crest/releases) (version 2.11, GNU Lesser General Public License v3)
+- [NWChem](https://github.com/nwchemgit/nwchem/releases) (version 6.8, Educational Community License v2)
+- [Goodvibes](https://github.com/patonlab/GoodVibes/tree/54d0750b0ba7aa9121c284519271a9a0bd0764a9) (version 3.0.1, commit 54d0750, MIT License)
 
 XTBDFT has not been tested with, but may happen to work with, newer versions of XTB, CREST, and NWChem.
 
-## Standard Installation
+## Installation
 [latest release page](https://github.com/sibo/xtbdft/releases/latest)
-1. Clone this repository in your desired directory and navigate into it:
+1. Clone this repository (or unzip a [release](https://github.com/sibo/xtbdft/releases/latest)) and navigate into the new directory in a terminal:
 ```bash
 git clone https://https://github.com/sibo/xtbdft.git
 cd xtbdft
@@ -22,7 +22,7 @@ cd xtbdft
 ```bash
 ./complete_install.sh
 ```
-2b. Or if there are pre-existing installations of xtb, crest, nwchem, and/or goodvibes, comment out the relevant section(s) from .complete_install.sh and then execute it.
+2b. Or if there are pre-existing installations of xtb, crest, nwchem, and/or goodvibes, comment out the relevant section(s) from .complete_install.sh and then execute it. This option is particularly useful if you choose to compile NWChem from source to optimize DFT performance.
 
 3. Modify the first 25 lines of bin/xtbdft.py to fit your computing environment, if necessary.
 
