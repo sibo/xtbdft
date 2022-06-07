@@ -1,4 +1,4 @@
-Example 1: [Cr(η<sup>6</sup>-PhCl)<sub>2</sub>]<sup>+</sup>
+Example 3: [Cr(η<sup>6</sup>-PhCl)<sub>2</sub>]<sup>+</sup>
 ========================================
 by Sibo Lin
 
