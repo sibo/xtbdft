@@ -23,6 +23,7 @@ cd xtbdft
 ./complete_install.sh
 ```
 2b. Or if there are pre-existing installations of xtb, crest, nwchem, and/or goodvibes, comment out the relevant section(s) from .complete_install.sh and then execute it.
+
 3. Modify the first 25 lines of bin/xtbdft.py to fit your computing environment, if necessary.
 
 ## Usage
