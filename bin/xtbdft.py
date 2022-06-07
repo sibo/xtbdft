@@ -20,17 +20,21 @@ mem_gb=100
 
 if os.system("which squeue") == 0:
 	msubHeader="""#!/bin/bash
-	#SBATCH -N {1}
-	#SBATCH --ntasks-per-node {0}
+	#SBATCH --nodes={1}
+	#SBATCH --ntasks=1
+	#SBATCH --cpus-per-task={0}
 	#SBATCH --time={2}-00:00:00
+	#SBATCH --mem={3}G
 	""".format(NP,nodes,max_walltime_days,mem_gb)
+	qsub="sbatch -c {0}".format(NP)
 else:
 	msubHeader="""#!/bin/bash
 	#PBS -l nodes={1}:ppn={0}
 	#PBS -l walltime={2}:00:00:00
 	#PBS -l mem={3}gb
 	""".format(NP,nodes,max_walltime_days,mem_gb)
-
+	qsub="qsub"
+	
 ### do not change below code unless you know what you're doing!
 if not (os.path.exists(os.path.expanduser(goodvibesPy))):
     print("Error: GoodVibes.py does not exist at " + goodvibesPy + "\n Please modify line 7 of xtbdft.py to reflect where GoodVibes.py is located.\nExiting...")
@@ -76,7 +80,7 @@ cd {1}
 {2}/bin/crest {3} --chrg {4} --uhf {5} -T {6} {7} {8}> crest.out""".format(xtbPath,os.getcwd(),xtbPath,file,chrg,uhf,NP,tsString,paramString))
     script.close()
     #calcID = subprocess.run(['msub','submit_crest_{0}.sh'.format(calcName)], stdout=subprocess.PIPE).stdout.decode('utf-8')
-    calcID = subprocess.check_output(['qsub','submit_crest_{0}.sh'.format(calcName)]).decode('utf-8').replace("\n","")
+    calcID = subprocess.check_output([qsub,'submit_crest_{0}.sh'.format(calcName)]).decode('utf-8').replace("\n","")
     os.system("echo \"calcID is {0}\" | tee {0}.calcID".format(calcID))
     return calcID
 
@@ -229,7 +233,7 @@ cd {0}
 mpirun -np {1} nwchem_mpich {2}.nw > nwchem.out
 echo "{3} (nwchem) submitted" """.format(os.getcwd(),NP,calcName2,calcName2))
     script.close()
-    calcID = subprocess.check_output(['qsub','submit_nwchem_{0}.sh'.format(calcName2)]).decode('utf-8').replace("\n","")
+    calcID = subprocess.check_output([qsub,'submit_nwchem_{0}.sh'.format(calcName2)]).decode('utf-8').replace("\n","")
     os.system("echo \"calcID is {0}\" | tee {0}.calcID".format(calcID))
     return calcID
 
