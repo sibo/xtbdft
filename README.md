@@ -43,7 +43,7 @@ nohup xtbdft.py guess.xyz &
 ```
 For determining the lowest energy conformation of a cationic, quartet-spin transition metal complex, containing a PhCl ligand that undergoes undesired oxidative addition under normal CREST parameters:
 ```bash
-nohup xtbdft.py guess.xyz -chrg 1 -uhf 3 -other="-cbonds 0.2" &
+nohup xtbdft.py guess.xyz -chrg 1 -uhf 3 -other="-cbonds 0.02" &
 ```
 For generating a guess transition state of a monocationic, doublet species, in which the distance between atoms X and Y is adjusted to Z Angstroms over 100 steps, but skipping CREST conformation searching, the input is:
 ```bash
