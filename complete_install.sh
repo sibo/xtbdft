@@ -34,7 +34,7 @@ echo "Installing GoodVibes commit 54d0750..."
 git clone https://github.com/patonlab/GoodVibes.git
 cd GoodVibes
 git checkout -b goodVibes_54d0750 54d0750
-echo -e "#Goodvibes bashrc entries below: \n export PYTHONPATH=\$PATH:$PWD/goodvibes/" >> ~/.bashrc 
+echo -e "#Goodvibes bashrc entries below: \n export PYTHONPATH=\$PYTHONPATH:$PWD/goodvibes/" >> ~/.bashrc 
 
 #clean up installation
 cd ..
