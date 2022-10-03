@@ -34,6 +34,8 @@ cd xtbdft
 - memory per calculation (default 100GB)
 
 ## Usage
+Note: Commonly, XTBDFT is run on a remote computing cluster via SSH. It is convenient to bracket the XTBDFT command with "nohup" and "&", to run the job in the background and allow it to keep running even after closing the SSH terminal or powering off your computer. If running XTBDFT locally, it is okay to omit "nohup" and "&".
+
 ```bash
 nohup xtbdft.py guess.xyz [-chrg int] [-uhf int] [-xc str,str,str,str] [-bs str,str,str,str] [-mode autoConf|autoTS] [-other=["skipCrest"|crestParameters] &
 ```
