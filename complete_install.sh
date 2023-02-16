@@ -18,7 +18,11 @@ echo -e "#XTB bashrc entries below: \n export PATH=\$PATH:$PWD/xtb-6.3.2/bin/ \n
 #install CREST v2.11 ("oldkernel" link may need to be uncommented, if running an older Linux version)
 #newer versions of CREST may or may not work with XTBDFT v1.0
 echo "Installing CREST v2.11"
-link=https://github.com/grimme-lab/crest/releases/download/v2.11/crest.tgz
+link=https://github.com/crest-lab/crest/releases/download/2.11/crest.tgz
+#link=https://github.com/crest-lab/crest/releases/download/2.11/crest-oldkernel.tgz
+
+#####Below two lines no longer work, due to reorganization of the grimme-lab/crest-lab repositories (Feb 16, 2023)
+#link=https://github.com/grimme-lab/crest/releases/download/v2.11/crest.tgz
 #link=https://github.com/grimme-lab/crest/releases/download/v2.11/crest-oldkernel.tgz
 curl -LJ0 $link > crest.tgz
 tar -xvzf crest.tgz --directory xtb-6.3.2/bin/
