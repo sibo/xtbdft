@@ -230,18 +230,6 @@ task shell "echo @starting vibrational calculation"
 task dft freq
 set "cd basis" bs-fitting
 
-task shell "echo @starting n-decane solvated calc"
-cosmo
-  do_cosmo_smd true
-  do_gasphase false
-  solvent decane
-end
-task dft energy
-unset cosmo:* #need this line between every solvent in a multi-solvent calculation
-cosmo
-  off
-end
-
 task shell "echo @starting {2} solvated calc"
 cosmo
   do_cosmo_smd true
@@ -458,6 +446,7 @@ def parseArgs():
     parser.add_argument("-cutoff",action="store",dest="cutoff",default=default_cutoff,type=float)
     parser.add_argument("-mode", action="store",dest="mode",default=["autoConf"],type=str,nargs='+')
     parser.add_argument("-other", action="store",dest="otherParams",default="",type=str,nargs='+')
+    parser.add_argument("-solv", action="store",dest="solv",default="decane",type=str)
     parser.add_argument("filename",action="store")
     results=parser.parse_args()
     if (not os.path.isfile(results.filename)):
@@ -483,7 +472,7 @@ def parseArgs():
     else:
         print("Error: valid calls are '-mode autoConf' or '-mode autoTS atom1 atom2 finalDistance'")
         sys.exit(1)
-    return results.filename,results.chrg,results.uhf,xc,bs,results.cutoff,mode,results.mode[1:],results.otherParams
+    return results.filename,results.chrg,results.uhf,xc,bs,results.cutoff,mode,results.mode[1:],results.otherParams,results.solv
     
 def checkEnv():
     #check that required shell scripts are executable
@@ -492,7 +481,7 @@ def checkEnv():
     #subprocess.check_output(['chmod','+x',realpath+"/pes_parse.py"])
     pass
 
-def autoConf(file,chrg,uhf,xc,bs,cutoff,otherParams):
+def autoConf(file,chrg,uhf,xc,bs,cutoff,otherParams,solvent):
     print("otherParams = " + str(otherParams))
     if otherParams == ['skipCrest']:
         os.system("cp {0} minimum_lowest.xyz".format(file))
@@ -524,7 +513,7 @@ def autoConf(file,chrg,uhf,xc,bs,cutoff,otherParams):
     os.system("mkdir refine")
     os.chdir("refine")
     os.system("echo {0}: running NWChem refine".format(datetime.now()))
-    calcID_nwchem = run_nwchem(chrg,uhf,"refine",xc,bs,cutoff)
+    calcID_nwchem = run_nwchem(chrg,uhf,"refine",xc,bs,cutoff,solv=solvent)
     os.system("echo {0}: tracking NWChem refine".format(datetime.now()))
     track_nwchem(calcID_nwchem)
     clean_nwchem()
@@ -561,7 +550,7 @@ def distance(atom1, atom2):
     deltaZ = float(atom1[3]) - float(atom2[3])
     return math.pow(math.pow(deltaX,2)+math.pow(deltaY,2)+math.pow(deltaZ,2),0.5)
 
-def autoTS(file,chrg,uhf,xc,bs,atomNo1,atomNo2,finalScanDistance,otherParams):
+def autoTS(file,chrg,uhf,xc,bs,atomNo1,atomNo2,finalScanDistance,otherParams,solvent):
     from shutil import copyfile
     #set up XTB scan
     os.system("echo {0}: setting up XTB xconstrains file".format(datetime.now()))
@@ -601,7 +590,7 @@ def autoTS(file,chrg,uhf,xc,bs,atomNo1,atomNo2,finalScanDistance,otherParams):
     os.system("mkdir refine")
     os.chdir("refine")
     os.system("echo {0}: running NWChem refine Constrained Opt, TS opt, frequency calc, and single-point energy evaluation".format(datetime.now()))
-    calcID_nwchem = run_nwchem(chrg,uhf,"refineTS",xc,bs,cutoff,atom1=atomNo1,atom2=atomNo2)
+    calcID_nwchem = run_nwchem(chrg,uhf,"refineTS",xc,bs,cutoff,atom1=atomNo1,atom2=atomNo2,solv=solvent)
     os.system("echo {0}: tracking NWChem refine".format(datetime.now()))
     track_nwchem(calcID_nwchem)
     clean_nwchem()
@@ -895,10 +884,10 @@ if __name__ == "__main__":
     print("nohup python3 ~/path/to/this/file/xtbdft.py geom.xyz [-chrg int] [-uhf int] > yourOutputFile.out &")
     pid = os.getpid()
     print("Process id = " + str(pid))
-    file,chrg,uhf,xc,bs,cutoff,mode,TSparams,otherParams=parseArgs()
+    file,chrg,uhf,xc,bs,cutoff,mode,TSparams,otherParams,solv=parseArgs()
     checkEnv()
     if (mode == "autoConf"):
-        autoConf(file,chrg,uhf,xc,bs,cutoff,otherParams)
+        autoConf(file,chrg,uhf,xc,bs,cutoff,otherParams,solv)
     elif (mode == "autoTS"):
-        autoTS(file,chrg,uhf,xc,bs,TSparams[0],TSparams[1],TSparams[2],otherParams)
+        autoTS(file,chrg,uhf,xc,bs,TSparams[0],TSparams[1],TSparams[2],otherParams,solv)
     
