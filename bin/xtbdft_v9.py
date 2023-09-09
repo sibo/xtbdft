@@ -101,8 +101,18 @@ def run_nwchem(chrg,uhf,calcType,xc,bs,cutoff,**kwargs):
         else:
             optType="saddle"
     if calcType == "crudeTS" or calcType == "refineTS":
-        atomNo1 = kwargs.get('atom1')
-        atomNo2 = kwargs.get('atom2')
+        #atomNo1 = kwargs.get('atom1')
+        #atomNo2 = kwargs.get('atom2')
+        atomNos = kwargs.get('atomNos')
+        zcoordTxt = ""
+        bonds = []
+        atomPairs = list(combinations(atomNos,2))
+        for atomPair in atomPairs:
+            bonds = bonds + genBondsData(file,atomPair[0],atomPair[1],"wbo")
+        os.system("echo constraining bonds: " + str(bonds))
+        for bond in bonds:
+            zcoordTxt += "  bond {0} {1} constant\n".format(bond[0],bond[1])
+   
     input=open("{0}.nw".format(calcName2),"w")
     input.write("""
 memory total 5200 mb
@@ -155,9 +165,9 @@ end""".format(i))
                 input.write("""
 geometry adjust # fix reaction coordinate (bond length)
     zcoord
-        bond {0} {1} constant
+        {0}
     end
-end""".format(atomNo1,atomNo2))
+end""".format(zcoordTxt))
             input.write("""
 task dft optimize
 task shell "echo @ conf {0} geometry opt complete"
@@ -192,7 +202,7 @@ set "cd basis" bs-fitting
         if calcType == "refineTS":
             input.write("""geometry adjust #fix reaction coordinate (bond)
   zcoord
-    bond {0} {1} constant
+    {0}
   end
 end
 
@@ -215,7 +225,7 @@ driver
   xyz opt/optS
 end
 task shell "echo @starting saddle optimization" 
-""".format(atomNo1,atomNo2))        
+""".format(zcoordTxt))        
         input.write("""
 task dft {0}
 
@@ -468,9 +478,15 @@ def parseArgs():
         try:
             float(results.mode[3])
         except:
-            print("could not convert {0} to a float".format(results.mode[3])) 
+            print("could not convert {0} to a float".format(results.mode[3]))
+    elif mode == "TSconf" and len(results.mode[1:]) >= 2:
+        for a in results.mode[1:]:
+            try:
+                int(a)
+            except:
+                print("could not convert {} to an int for atom index".format(a))
     else:
-        print("Error: valid calls are '-mode autoConf' or '-mode autoTS atom1 atom2 finalDistance'")
+        print("Error: valid calls are '-mode autoConf' or '-mode autoTS atom1 atom2 finalDistance' or '-mode TSconf atom1 [...] atomN'")
         sys.exit(1)
     return results.filename,results.chrg,results.uhf,xc,bs,results.cutoff,mode,results.mode[1:],results.otherParams,results.solv
     
@@ -550,13 +566,23 @@ def distance(atom1, atom2):
     deltaZ = float(atom1[3]) - float(atom2[3])
     return math.pow(math.pow(deltaX,2)+math.pow(deltaY,2)+math.pow(deltaZ,2),0.5)
 
-def autoTS(file,chrg,uhf,xc,bs,atomNo1,atomNo2,finalScanDistance,otherParams,solvent):
+def autoTS(file,chrg,uhf,xc,bs,mode,TSparams,otherParams,solvent):
     from shutil import copyfile
-    #set up XTB scan
-    os.system("echo {0}: setting up XTB xconstrains file".format(datetime.now()))
-    startScanDistance=getBondDistance(file,atomNo1,atomNo2)
-    barrier1=xtbScan(file,chrg,uhf,atomNo1,atomNo2,startScanDistance,finalScanDistance,"forward")
-    xtbRxnPath(file,"end.xyz",chrg,uhf)
+    atomNos=[]
+    if mode == "autoTS":
+        [atomNo1,atomNo2,finalScanDistance] = TSparams
+        atomNos=[atomNo1,atomNo2]
+        #set up XTB scan
+        os.system("echo {0}: setting up XTB xconstrains file".format(datetime.now()))
+        startScanDistance=getBondDistance(file,atomNo1,atomNo2)
+        barrier1=xtbScan(file,chrg,uhf,atomNo1,atomNo2,startScanDistance,finalScanDistance,"forward")
+        xtbRxnPath(file,"end.xyz",chrg,uhf)
+
+    elif mode == "TSconf":
+        atomNos = TSparams
+        os.system("echo TSparams: " + str(TSparams))
+        os.system("cp {} TSguess.xyz".format(file))
+
     #run xtb single-point on TS guess, in order to determine if any hydrogen atoms are involved in the transition state, what the bonded neighbors of the hydrogen atom are
     os.system("mkdir -p xtb_sp")
     os.chdir("xtb_sp")
@@ -569,9 +595,9 @@ def autoTS(file,chrg,uhf,xc,bs,atomNo1,atomNo2,finalScanDistance,otherParams,sol
         if (os.path.isfile("crest.out")) and ("CREST terminated" in subprocess.check_output(['tail','-2','crest.out']).decode('utf-8')):
             print("CREST already complete, skipping to NWChem Crude Refinement")
         else:
-            #run crest on TSguess.xyz, constraining bond of interest
+            #run crest on TSguess.xyz, constraining bonds/atoms of interest
             os.system("echo {0}: setting up CREST for TS guess files".format(datetime.now()))
-            crestTS("TSguess.xyz",chrg,uhf,atomNo1,atomNo2,otherParams)
+            crestTS("TSguess.xyz",chrg,uhf,mode,atomNos,otherParams)
 
         #run NWChem constrained optimization on Crest ensemble
         os.system("mkdir nwchem")
@@ -712,19 +738,25 @@ def xtbScan(file,chrg,uhf,atomNo1,atomNo2,startScanDistance,finalScanDistance,di
     os.chdir("..")
     return maxEnergy
 
-def crestTS(file,chrg,uhf,atomNo1,atomNo2,otherParams): 
+def crestTS(file,chrg,uhf,mode,atomNos,otherParams): 
+    os.system("echo @@@ atomNos: {}".format(atomNos))
     #otherParams can be other commandline arguments for crest such as "-cbonds 0.1"
+    from itertools import combinations
     dir = "crestTS"
     os.system("mkdir -p " + dir)
     os.system("cp " + file + " " + dir + "/")
     os.system("cp xtb_sp/wbo " + dir + "/") 
     os.chdir(dir)
     f = open(".xcontrol","w+")
-    f.write("$constrain\n)  ###  force constant=1.0\n")
-    bonds = genBondsData(file,atomNo1,atomNo2,"wbo")
+    f.write("$constrain\n  force constant=1.0\n")
+    bonds = []
+    atomPairs = list(combinations(atomNos,2))
+    for atomPair in atomPairs:
+        bonds = bonds + genBondsData(file,atomPair[0],atomPair[1],"wbo")
+    os.system("echo constraining bonds: " + str(bonds))
     for bond in bonds:
-        f.write("  distance: {}, {}, {}\n".format(bond[0],bond[1],bond[2]))
-    #if -cbonds is used, for some reason the CREST calculation fails unless the .xcontrains file is streamlined manually
+        f.write("  distance: {0}, {1}, {2}\n".format(bond[0],bond[1],bond[2]))
+        #if -cbonds is used, for some reason the CREST calculation fails unless the .xcontrains file is streamlined manually
     paramString=""
     for p in otherParams:
       paramString += p
@@ -786,6 +818,7 @@ def genBondsData(xyz,atomNo1,atomNo2,wbo):
     f = open(wbo,"r")
     lines = f.readlines()
 
+    #if atom1 or atom2 are hydrogen atoms, looks for other bonds that may need to be constrained
     if atom1.split()[0].lower() == 'h':
         for line in lines:
             if str(atomNo1) in line.split() and str(atomNo2) not in line.split():
@@ -880,6 +913,8 @@ def atomList(file,atomNo1,atomNo2):
     return a 
 
 if __name__ == "__main__":
+    pid = os.getpid()
+    os.system("touch " + str(pid))
     print("Reminder on how to run xtb-nwchem.py in headless mode:")
     print("nohup python3 ~/path/to/this/file/xtbdft.py geom.xyz [-chrg int] [-uhf int] > yourOutputFile.out &")
     pid = os.getpid()
@@ -888,6 +923,6 @@ if __name__ == "__main__":
     checkEnv()
     if (mode == "autoConf"):
         autoConf(file,chrg,uhf,xc,bs,cutoff,otherParams,solv)
-    elif (mode == "autoTS"):
-        autoTS(file,chrg,uhf,xc,bs,TSparams[0],TSparams[1],TSparams[2],otherParams,solv)
+    elif (mode == "autoTS" or mode == "TSconf"):
+        autoTS(file,chrg,uhf,xc,bs,mode,TSparams,otherParams,solv)
     
