@@ -55,6 +55,13 @@ To scan for a transition state of a monocationic, doublet species, in which the 
 ```bash
 nohup xtbdft.py guess.xyz -chrg 1 -uhf 1 -mode autoTS X Y Z -other="-cbonds 1.0" &
 ```
+** New in XTBDFT V1.2 ** To do a conformer serach of a reasonable guess structure for a transition state of a monocationic, doublet species, in which atoms 1,2,[...],N are held constant, the input is:
+```bash
+nohup xtbdft.py guess.xyz -chrg 1 -uhf 1 -mode TSconf atomNo1 atomNo2 [...] atomNoN &
+```
+
+
+
 XTBDFT is currently configured to run on a compute cluster with MSUB scheduler, however, it can be run locally for debugging purposes:
 ```bash
 xtbdft.py guess.xyz -local true
@@ -63,7 +70,8 @@ xtbdft.py guess.xyz -local true
 
 ## Citations
 
-1. Lin, S.; Fromer, J. C.; Ghosh, Y.; Hanna, B.; Elanany, M.; Xu, Wei "Computer-assisted catalyst development via automated modelling of conformationally complex molecules: application to diphosphinoamine ligands" <i>Sci. Rep.</i> <b>2021</b>, <i>11</i>, 4534. DOI: <a href="https://doi.org/10.1038/s41598-021-82816-x">10.1038/s41598-021-82816-x</a>
+1. Lin, S.; Fromer, J. C.; Ghosh, Y.; Hanna, B.; Elanany, M.; Xu, W. "Computer-assisted catalyst development via automated modelling of conformationally complex molecules: application to diphosphinoamine ligands" <i>Sci. Rep.</i> <b>2021</b>, <i>11</i>, 4534. DOI: <a href="https://doi.org/10.1038/s41598-021-82816-x">10.1038/s41598-021-82816-x</a>
+2. Lin, S.; Elanany, M.; Khawji, M. "XTBDFT: Automated workflow for conformer searching of minima and transition states powered by extended tight binding and density functional theory" <i>SoftwareX</i> <b>2022</b>, <i>20</i>, 101242. DOI: <a href="https://www.sciencedirect.com/science/article/pii/S2352711022001601?via%3Dihub">10.1016/j.softx.2022.101242</a>
 
 ## License
 
